@@ -1,0 +1,11 @@
+Attack,Instagram Survival (%),TruthLens Survival (%),Avg Marked Tiles (%),Avg Tile Z-Score,Avg Max Tile Z
+none,100.0,100.0,46.4,5.15,18.26
+screenshot_strip,0.0,100.0,46.4,5.15,18.26
+jpeg_q90,100.0,100.0,46.4,5.08,17.43
+jpeg_q75,100.0,100.0,43.2,4.27,10.92
+jpeg_q50,100.0,100.0,29.9,3.21,6.05
+crop_10_odd,100.0,100.0,47.3,5.12,17.08
+crop_jpeg_q75,100.0,100.0,38.8,4.14,11.20
+brightness_plus_10,100.0,100.0,43.2,5.00,18.04
+resize_0_9x,100.0,50.0,1.0,0.22,4.18
+resize_1_5x,100.0,33.3,0.7,0.35,3.97
