@@ -71,7 +71,7 @@ def test_studio_generate_and_analyze():
     raw_b64 = gen_data["image_base64"].split(",")[1]
     raw_bytes = base64.b64decode(raw_b64)
 
-    # In Instagram mode: should show AI info (metadata embedded)
+    # In Instagram mode: should show AI info (metadata embedded) but ZERO tile watermark telemetry
     res_ig = client.post(
         "/api/analyze",
         files={"file": ("gen.png", raw_bytes, "image/png")},
@@ -80,8 +80,11 @@ def test_studio_generate_and_analyze():
     assert res_ig.status_code == 200
     assert res_ig.json()["has_ai_label"] is True
     assert res_ig.json()["label"] == "AI info"
+    assert res_ig.json()["tiles_marked"] == 0
+    assert res_ig.json()["total_tiles"] == 0
+    assert res_ig.json()["fraction"] == 0.0
 
-    # In TruthLens mode: should show AI-generated with verified provenance
+    # In TruthLens mode: should show AI-generated with verified provenance and full tile telemetry
     res_tl = client.post(
         "/api/analyze",
         files={"file": ("gen.png", raw_bytes, "image/png")},
@@ -90,6 +93,8 @@ def test_studio_generate_and_analyze():
     assert res_tl.status_code == 200
     assert res_tl.json()["has_ai_label"] is True
     assert res_tl.json()["provenance"] == "verified"
+    assert res_tl.json()["tiles_marked"] > 0
+    assert res_tl.json()["total_tiles"] == 64
 
 
 def test_attack_lab_endpoint():
