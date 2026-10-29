@@ -67,7 +67,7 @@ export const RobustnessTable: React.FC<RobustnessTableProps> = ({ rows, isLoadin
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-semibold border border-neutral-700 transition-all cursor-pointer disabled:opacity-40"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Export CSV for Slides</span>
+            <span>Export CSV Report</span>
           </button>
         </div>
       </div>

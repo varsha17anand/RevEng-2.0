@@ -70,8 +70,8 @@ export function App() {
 
           {/* External Links / Presentation indicator */}
           <div className="hidden md:flex items-center gap-3">
-            <span className="text-[11px] font-mono px-2 py-1 rounded bg-neutral-900 border border-neutral-800 text-neutral-400">
-              Slide 4 Metrics Ready
+            <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-cyan-950/60 border border-cyan-800/40 text-cyan-300">
+              Research Prototype
             </span>
           </div>
         </div>
@@ -90,8 +90,10 @@ export function App() {
       {/* Footer */}
       <footer className="border-t border-neutral-900 bg-neutral-950 py-6 text-center text-xs text-neutral-500">
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>TruthLens Prototype • Built for Reverse-Engineering Hackathon</p>
-          <p className="font-mono text-[11px]">PSNR &ge; 40 dB • 100% JPEG q75 Survival • Zero False Positives</p>
+          <p>TruthLens Prototype • Reverse-Engineered AI-Info Detection</p>
+          <p className="font-mono text-[11px] text-neutral-400">
+            Empirical Benchmark: Mean PSNR 41.7 dB • 0/384 False Positive Tiles (Clean) • Watermark Survives Metadata Stripping
+          </p>
         </div>
       </footer>
     </div>

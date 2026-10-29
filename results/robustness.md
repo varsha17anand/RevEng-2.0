@@ -23,7 +23,7 @@ Evaluation conducted on 6 diverse photographic samples (campus quad, portrait, c
 | `resize_0_9x` | 100% | **0%** | 0.0% | -0.05 | `DEFEATED` |
 | `resize_1_5x` | 100% | **17%** | 0.1% | 0.24 | `PARTIAL` |
 
-### Measurable Before-vs-After Metric (For Slide 4)
+### Key Empirical Findings
 
 > **Under standard screenshot / metadata stripping attacks:**
 >
@@ -31,8 +31,8 @@ Evaluation conducted on 6 diverse photographic samples (campus quad, portrait, c
 > - **TruthLens AI Detection Survival:** `100.0%` (Average Z-score: `5.5+` across marked tiles)
 >
 > **Under JPEG Compression (q75):**
-> - **TruthLens Survival:** `100.0%` with `43%+` marked tiles and zero false positives on clean images.
+> - **TruthLens Detection Survival:** `100.0%` (avg `43.2%` tiles marked above z=4.0) with zero false positives on clean images.
 
 ### Limitations and Honest Boundary Analysis
-- **Pixel Resampling (Resize 0.9x / 1.5x):** Continuous bicubic/lanczos resampling breaks the strict 8x8 block DCT frequency grid, reducing survival rate to 33–50%. This is an honest technical boundary of uncalibrated spatial DCT watermarking.
+- **Pixel Resampling (Resize 0.9x / 1.5x):** Continuous bicubic/lanczos resampling breaks the strict 8x8 block DCT frequency grid, defeating uncalibrated spatial DCT tile detection (0–17% survival in Attack Lab). This is a documented technical boundary of uncalibrated spatial DCT watermarking.
 - **Adoption Pre-requisite:** TruthLens requires AI generators to embed the pixel watermark at synthesis time, serving as an immutable companion to C2PA provenance.

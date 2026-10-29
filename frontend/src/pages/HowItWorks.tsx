@@ -148,7 +148,7 @@ export const HowItWorks: React.FC = () => {
             </span>
             <p className="text-purple-300 text-sm">α = base × clip(σ / 15, 0.7, 2.0)</p>
             <p className="text-[11px] text-neutral-400 font-sans">
-              Masks watermark in textured regions, guaranteeing PSNR &ge; 40 dB across all samples.
+              Masks watermark embedding in textured regions (empirical mean PSNR: 41.7 dB across test dataset).
             </p>
           </div>
 
@@ -189,10 +189,10 @@ export const HowItWorks: React.FC = () => {
                 <td className="py-2.5 px-3 text-cyan-300">2D DCT Luminance + Metadata</td>
               </tr>
               <tr>
-                <td className="py-2.5 px-3 font-semibold text-neutral-200">Survives Screenshot</td>
-                <td className="py-2.5 px-3 text-rose-400 font-mono">0% (Completely Stripped)</td>
-                <td className="py-2.5 px-3 text-emerald-400 font-mono">100%</td>
-                <td className="py-2.5 px-3 text-emerald-400 font-mono">100%</td>
+                <td className="py-2.5 px-3 font-semibold text-neutral-200">Survives Screenshot / Stripping</td>
+                <td className="py-2.5 px-3 text-rose-400 font-medium">No (Metadata Stripped)</td>
+                <td className="py-2.5 px-3 text-emerald-400 font-medium">Yes (Pixel Latents)</td>
+                <td className="py-2.5 px-3 text-emerald-400 font-medium">Yes (DCT Pixel Watermark)</td>
               </tr>
               <tr>
                 <td className="py-2.5 px-3 font-semibold text-neutral-200">Granularity & Localization</td>
@@ -233,9 +233,9 @@ export const HowItWorks: React.FC = () => {
           <div className="p-3.5 rounded-xl bg-neutral-900 border border-neutral-800 space-y-1">
             <strong className="text-neutral-200 block">2. Continuous Spatial Resampling (Resize 0.9x / 1.5x):</strong>
             <p>
-              Bicubic or Lanczos resampling continuously alters the 8×8 block frequency grid, degrading detection to
-              33–50%. This is an honest technical boundary of uncalibrated spatial DCT watermarks, documented in our
-              Attack Lab.
+              Bicubic or Lanczos resampling continuously alters the 8×8 block frequency grid, defeating uncalibrated
+              spatial DCT tile detection (0–17% survival in Attack Lab). Resisting non-integer affine scaling without
+              prior geometric registration templates is a documented boundary of spatial-domain DCT watermarks.
             </p>
           </div>
 
