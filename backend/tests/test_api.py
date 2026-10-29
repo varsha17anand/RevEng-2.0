@@ -163,3 +163,69 @@ def test_region_edit_survives_screenshot_attack():
     assert res_tl.json()["has_ai_label"] is True
     assert res_tl.json()["label"].startswith("AI-edited")
     assert res_tl.json()["tiles_marked"] > 0
+
+
+def test_input_validation_and_sanitized_errors():
+    """Verify robust validation on invalid inputs and sanitized error messages."""
+    img = Image.fromarray(np.full((256, 256, 3), 100, dtype=np.uint8))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    valid_bytes = buf.getvalue()
+
+    # 1. Unknown mode (e.g. 'banana') rejected with 400
+    res_mode = client.post(
+        "/api/analyze",
+        files={"file": ("test.png", valid_bytes, "image/png")},
+        data={"mode": "banana"}
+    )
+    assert res_mode.status_code == 400
+    assert "Invalid mode 'banana'" in res_mode.json()["detail"]
+
+    # 2. Inverted box coordinates (x1 > x2) rejected with 400
+    res_inv = client.post(
+        "/api/studio/edit",
+        files={"file": ("test.png", valid_bytes, "image/png")},
+        data={"x1": 200, "y1": 50, "x2": 50, "y2": 150, "style": "cyberpunk"}
+    )
+    assert res_inv.status_code == 400
+    assert "Invalid selection coordinates" in res_inv.json()["detail"]
+
+    # 3. Zero-size box coordinates (x1 == x2) rejected with 400
+    res_zero = client.post(
+        "/api/studio/edit",
+        files={"file": ("test.png", valid_bytes, "image/png")},
+        data={"x1": 50, "y1": 50, "x2": 50, "y2": 100, "style": "cyberpunk"}
+    )
+    assert res_zero.status_code == 400
+    assert "Invalid selection coordinates" in res_zero.json()["detail"]
+
+    # 4. Box entirely outside image dimensions rejected with 400
+    res_out = client.post(
+        "/api/studio/edit",
+        files={"file": ("test.png", valid_bytes, "image/png")},
+        data={"x1": 500, "y1": 500, "x2": 600, "y2": 600, "style": "cyberpunk"}
+    )
+    assert res_out.status_code == 400
+    assert "completely outside image dimensions" in res_out.json()["detail"]
+
+    # 5. Unknown style rejected with 400
+    res_style = client.post(
+        "/api/studio/edit",
+        files={"file": ("test.png", valid_bytes, "image/png")},
+        data={"x1": 50, "y1": 50, "x2": 150, "y2": 150, "style": "unknown_random_style"}
+    )
+    assert res_style.status_code == 400
+    assert "Unknown edit style" in res_style.json()["detail"]
+
+    # 6. Corrupted non-image file rejected without exposing internal Python memory addresses (_io.BytesIO at 0x...)
+    corrupt_bytes = b"not_an_image_corrupt_data"
+    res_corrupt = client.post(
+        "/api/analyze",
+        files={"file": ("broken.jpg", corrupt_bytes, "image/jpeg")},
+        data={"mode": "truthlens"}
+    )
+    assert res_corrupt.status_code == 400
+    detail = res_corrupt.json()["detail"]
+    assert "unable to decode image data" in detail
+    assert "BytesIO" not in detail
+    assert "0x" not in detail

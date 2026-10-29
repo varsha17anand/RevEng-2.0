@@ -172,6 +172,9 @@ def generate_ai_image(
     return watermarked, img_bytes, manifest
 
 
+VALID_EDIT_STYLES = {"cyberpunk", "golden_glow", "golden_hour", "stylize", "art_stylize"}
+
+
 def edit_ai_region(
     image: Image.Image,
     box: Tuple[int, int, int, int],
@@ -190,29 +193,47 @@ def edit_ai_region(
     Returns:
         Tuple of (edited_watermarked_image, encoded_bytes, manifest_dict, edited_tile_coords).
     """
+    style_clean = edit_style.strip().lower()
+    if style_clean not in VALID_EDIT_STYLES:
+        raise ValueError(
+            f"Unknown edit style '{edit_style}'. Allowed styles: {sorted(list(VALID_EDIT_STYLES))}"
+        )
+
     img_rgb = image.convert("RGB")
     W, H = img_rgb.size
 
     x1, y1, x2, y2 = box
-    x1, x2 = max(0, min(x1, x2)), min(W, max(x1, x2))
-    y1, y2 = max(0, min(y1, y2)), min(H, max(y1, y2))
+    if x1 >= x2 or y1 >= y2:
+        raise ValueError(
+            f"Invalid box coordinates: x1 ({x1}) must be < x2 ({x2}) and y1 ({y1}) must be < y2 ({y2})"
+        )
 
-    # Ensure box has minimum size
-    if x2 - x1 < 10:
-        x2 = min(W, x1 + 64)
-    if y2 - y1 < 10:
-        y2 = min(H, y1 + 64)
+    if x2 <= 0 or x1 >= W or y2 <= 0 or y1 >= H:
+        raise ValueError(
+            f"Selection box [{x1}, {y1}, {x2}, {y2}] is completely outside image dimensions ({W}x{H})"
+        )
+
+    # Intersection with image boundaries
+    cx1 = max(0, x1)
+    cy1 = max(0, y1)
+    cx2 = min(W, x2)
+    cy2 = min(H, y2)
+
+    if cx2 <= cx1 or cy2 <= cy1:
+        raise ValueError(
+            f"Selection box [{x1}, {y1}, {x2}, {y2}] has zero overlap with image ({W}x{H})"
+        )
 
     # 1. Apply visible visual transformation inside box
     edited_np = np.array(img_rgb, dtype=np.float32)
-    roi = edited_np[y1:y2, x1:x2]
+    roi = edited_np[cy1:cy2, cx1:cx2]
 
-    if edit_style == "cyberpunk":
+    if style_clean == "cyberpunk":
         # Boost contrast, shift tones toward vibrant magenta and cyan
         roi[:, :, 0] = np.clip(roi[:, :, 0] * 1.35 + 25, 0, 255)
         roi[:, :, 1] = np.clip(roi[:, :, 1] * 0.85, 0, 255)
         roi[:, :, 2] = np.clip(roi[:, :, 2] * 1.45 + 30, 0, 255)
-    elif edit_style == "golden_glow":
+    elif style_clean in ("golden_glow", "golden_hour"):
         # Warm golden solar glow
         roi[:, :, 0] = np.clip(roi[:, :, 0] * 1.30 + 35, 0, 255)
         roi[:, :, 1] = np.clip(roi[:, :, 1] * 1.15 + 20, 0, 255)
@@ -224,7 +245,7 @@ def edit_ai_region(
         roi[:, :, 1] = np.clip(mean_lum * 0.95 + 10, 0, 255)
         roi[:, :, 2] = np.clip(mean_lum * 1.40 + 30, 0, 255)
 
-    edited_np[y1:y2, x1:x2] = roi
+    edited_np[cy1:cy2, cx1:cx2] = roi
     visually_edited_img = Image.fromarray(np.clip(edited_np, 0, 255).astype(np.uint8))
 
     # 2. Compute overlapping 64x64 tiles
@@ -232,16 +253,17 @@ def edit_ai_region(
     n_tx = W // TILE_SIZE
     tile_mask = np.zeros((n_ty, n_tx), dtype=bool)
 
-    ty_min = max(0, y1 // TILE_SIZE)
-    ty_max = min(n_ty - 1, (y2 - 1) // TILE_SIZE)
-    tx_min = max(0, x1 // TILE_SIZE)
-    tx_max = min(n_tx - 1, (x2 - 1) // TILE_SIZE)
+    ty_min = max(0, cy1 // TILE_SIZE)
+    ty_max = min(n_ty - 1, (cy2 - 1) // TILE_SIZE)
+    tx_min = max(0, cx1 // TILE_SIZE)
+    tx_max = min(n_tx - 1, (cx2 - 1) // TILE_SIZE)
 
     edited_tiles: List[Tuple[int, int]] = []
-    for ty in range(ty_min, ty_max + 1):
-        for tx in range(tx_min, tx_max + 1):
-            tile_mask[ty, tx] = True
-            edited_tiles.append((ty, tx))
+    if ty_min <= ty_max and tx_min <= tx_max:
+        for ty in range(ty_min, ty_max + 1):
+            for tx in range(tx_min, tx_max + 1):
+                tile_mask[ty, tx] = True
+                edited_tiles.append((ty, tx))
 
     # 3. Watermark ONLY the marked tiles with robust strength (PSNR >= 41.5 dB)
     watermarked = embed_watermark(visually_edited_img, tile_mask=tile_mask, base=6.5)

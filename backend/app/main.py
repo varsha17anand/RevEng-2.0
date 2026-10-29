@@ -29,7 +29,7 @@ from app.watermark import (
 )
 from app.labeler import instagram_mode_label, truthlens_label
 from app.attacks import ATTACK_REGISTRY, apply_attack
-from app.ai_edit import generate_ai_image, edit_ai_region
+from app.ai_edit import generate_ai_image, edit_ai_region, VALID_EDIT_STYLES
 from app.schemas import (
     AnalyzeResponse,
     AttackLabResponse,
@@ -100,14 +100,28 @@ SAMPLE_METADATA = [
 def validate_image_file(file: UploadFile, content: bytes) -> Image.Image:
     """Validate uploaded file size, content-type, and decodability."""
     if len(content) > MAX_UPLOAD_SIZE:
-        raise HTTPException(status_code=413, detail=f"File exceeds maximum allowed size of {MAX_UPLOAD_SIZE // (1024*1024)} MB")
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds maximum allowed size of {MAX_UPLOAD_SIZE // (1024*1024)} MB"
+        )
+    if not content:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is empty (0 bytes)"
+        )
     try:
         img = Image.open(io.BytesIO(content))
         img.verify()
         # Re-open after verify() because verify() exhausts image state
         return Image.open(io.BytesIO(content)).convert("RGB")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception:
+        filename = getattr(file, "filename", "file") or "file"
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid image file '{filename}': unable to decode image data. Expected valid PNG, JPEG, or WEBP."
+        )
 
 
 def image_to_base64_data_url(img: Image.Image, format: str = "PNG") -> str:
@@ -177,6 +191,11 @@ def analyze_image(
     img = validate_image_file(file, content)
 
     mode_lower = mode.strip().lower()
+    if mode_lower not in ("instagram", "truthlens"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid mode '{mode}'. Allowed modes: 'truthlens', 'instagram'"
+        )
 
     if mode_lower == "instagram":
         res = instagram_mode_label(content)
@@ -355,16 +374,39 @@ def studio_edit(
     """Apply localized AI edit inside a rectangle, marking only those tiles."""
     content = file.file.read()
     img = validate_image_file(file, content)
+    W, H = img.size
+
+    # Validate box coordinates: reject inverted or zero-size selections
+    if x1 >= x2 or y1 >= y2:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid selection coordinates: x1 ({x1}) must be < x2 ({x2}) and y1 ({y1}) must be < y2 ({y2})"
+        )
+
+    # Validate box bounds: reject selections entirely outside image dimensions
+    if x2 <= 0 or x1 >= W or y2 <= 0 or y1 >= H:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Selection box [{x1}, {y1}, {x2}, {y2}] is completely outside image dimensions ({W}x{H})"
+        )
+
+    # Validate style
+    style_clean = style.strip().lower()
+    if style_clean not in VALID_EDIT_STYLES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown edit style '{style}'. Allowed styles: {sorted(list(VALID_EDIT_STYLES))}"
+        )
 
     box = (x1, y1, x2, y2)
-    edited_img, img_bytes, manifest, edited_tiles = edit_ai_region(img, box, edit_style=style)
+    edited_img, img_bytes, manifest, edited_tiles = edit_ai_region(img, box, edit_style=style_clean)
     b64 = bytes_to_base64_data_url(img_bytes, format="PNG")
 
     n_ty = edited_img.height // TILE_SIZE
     n_tx = edited_img.width // TILE_SIZE
     total_tiles = max(1, n_ty * n_tx)
     frac = len(edited_tiles) / total_tiles
-    pct = max(1, round(frac * 100))
+    pct = max(1, round(frac * 100)) if len(edited_tiles) > 0 else 0
 
     return StudioEditResponse(
         image_base64=b64,
