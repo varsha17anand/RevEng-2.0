@@ -117,17 +117,29 @@ def truthlens_label(
     # 3. Graded label decision:
     # Uses verified manifest/IPTC metadata when available, or relies on robust DCT watermark
     # spatial distribution when metadata is stripped (e.g. screenshot attack).
+    #
+    # display_fraction: the percentage shown to the user in the label (0.0–1.0).
+    #   - "AI-generated":           tiles_marked / total_tiles  (actual detected tiles)
+    #   - "AI-edited: N% of image": tiles from manifest edited_tiles list / total_tiles
+    #                               OR tiles_marked / total_tiles when metadata is gone
+    #   - "No AI watermark":        0.0
+    display_fraction: float = 0.0
+
     if manifest_action == "generated" or (digital_source and "trainedAlgorithmicMedia" in digital_source):
         label = "AI-generated"
         has_ai_label = True
+        # For display use actual detected tile fraction (may be < 1.0 after screenshot JPEG loss)
+        display_fraction = float(tiles_marked) / float(total_tiles)
     elif manifest_action == "edited" or (digital_source and "compositeWithTrainedAlgorithmicMedia" in digital_source):
         edited_list = manifest_obj.get("payload", {}).get("edited_tiles", []) if manifest_obj else []
         if edited_list:
+            # Use the authoritative edited tile count from the signed manifest
             pct = max(1, round((len(edited_list) / float(total_tiles)) * 100))
-        elif bbox_coverage > 0:
-            pct = max(1, round(bbox_coverage * 100))
+            display_fraction = len(edited_list) / float(total_tiles)
         else:
+            # Metadata action present but no tile list — fall back to detected tile count
             pct = max(1, round(fraction_marked * 100))
+            display_fraction = fraction_marked
         label = f"AI-edited: {pct}% of image"
         has_ai_label = True
     elif has_watermark:
@@ -143,20 +155,25 @@ def truthlens_label(
         if is_full_gen:
             label = "AI-generated"
             has_ai_label = True
+            display_fraction = fraction_marked  # fraction of detected tiles
         else:
-            # Region edit: compute percentage from the bounding box of marked tiles
-            est_pct = max(1, round(bbox_coverage * 100))
-            label = f"AI-edited: {est_pct}% of image"
+            # Region edit: percentage = detected tile count / total tiles
+            # (tiles_marked is the ground truth here; bbox_coverage would over-estimate)
+            pct = max(1, round(fraction_marked * 100))
+            label = f"AI-edited: {pct}% of image"
             has_ai_label = True
+            display_fraction = fraction_marked
     else:
         label = "No AI watermark"
         has_ai_label = False
+        display_fraction = 0.0
 
     return {
         "mode": "truthlens",
         "label": label,
         "has_ai_label": has_ai_label,
-        "fraction_marked": float(fraction_marked),
+        "fraction_marked": float(fraction_marked),   # raw watermark tile fraction
+        "display_fraction": display_fraction,         # fraction shown in UI label
         "tiles_marked": tiles_marked,
         "total_tiles": total_tiles,
         "global_z": float(global_z),

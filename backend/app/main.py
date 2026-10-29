@@ -212,7 +212,7 @@ async def analyze_image(
             mode="truthlens",
             label=res["label"],
             has_ai_label=res["has_ai_label"],
-            fraction=res["fraction_marked"],
+            fraction=res["display_fraction"],   # labelled percentage, not raw watermark fraction
             tiles_marked=res["tiles_marked"],
             total_tiles=res["total_tiles"],
             global_z=res["global_z"],

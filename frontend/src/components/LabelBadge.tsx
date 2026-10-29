@@ -61,7 +61,7 @@ export const LabelBadge: React.FC<LabelBadgeProps> = ({
           <Layers className="w-3.5 h-3.5 text-purple-300" />
           <span>AI-generated</span>
           <span className="text-[10px] px-1.5 py-0.2 bg-purple-900/80 rounded font-mono text-purple-300">
-            {Math.round(fraction * 100)}% tiles
+            {tilesMarked}/{totalTiles} tiles · z̄={globalZ.toFixed(1)}
           </span>
         </div>
       ) : isEdited ? (
@@ -76,7 +76,7 @@ export const LabelBadge: React.FC<LabelBadgeProps> = ({
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 text-xs font-semibold backdrop-blur-md">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           <span>No AI watermark</span>
-          <span className="text-[10px] text-emerald-400/80 font-mono">0% tiles</span>
+          <span className="text-[10px] text-emerald-400/80 font-mono">{tilesMarked}/{totalTiles} tiles</span>
         </div>
       )}
 

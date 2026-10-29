@@ -106,8 +106,10 @@ export const HowItWorks: React.FC = () => {
             <div className="p-3 rounded-xl bg-neutral-900/80 border border-neutral-800 text-xs space-y-1">
               <span className="font-semibold text-cyan-300">3. Graded Label & Heatmap</span>
               <p className="text-[11px] text-neutral-400">
-                Differentiates <em>AI-generated</em> (&ge;85% tiles) from <em>AI-edited: N% of image</em> with red
-                translucent overlay.
+              <p className="text-[11px] text-neutral-400">
+                Differentiates <em>AI-generated</em> (bbox spans ≥70% of image AND ≥28% tiles marked) from <em>AI-edited: N% of image</em> with red
+                translucent overlay. When metadata is present, tile count from the signed manifest is used directly.
+              </p>
               </p>
             </div>
 
