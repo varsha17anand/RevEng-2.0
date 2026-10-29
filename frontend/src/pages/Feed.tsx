@@ -21,7 +21,21 @@ export const Feed: React.FC<FeedProps> = ({ initialBlob }) => {
   const [isAttacking, setIsAttacking] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Load sample photos on mount or handle initialBlob
+  // Fetch sample photos on mount so gallery thumbnails are always available
+  useEffect(() => {
+    fetchSamples()
+      .then((data) => {
+        setSamples(data);
+        if (!initialBlob && data.length > 0) {
+          loadSampleImage(data[0], sampleType);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load samples:', err);
+      });
+  }, []);
+
+  // Handle incoming initialBlob (e.g. from Studio "Send to Feed")
   useEffect(() => {
     if (initialBlob) {
       setSelectedSample(null);
@@ -29,17 +43,6 @@ export const Feed: React.FC<FeedProps> = ({ initialBlob }) => {
       setCurrentImageSrc(url);
       setCurrentBlob(initialBlob);
       runAnalysis(initialBlob, mode);
-    } else {
-      fetchSamples()
-        .then((data) => {
-          setSamples(data);
-          if (data.length > 0) {
-            loadSampleImage(data[0], sampleType);
-          }
-        })
-        .catch((err) => {
-          console.error('Failed to load samples:', err);
-        });
     }
   }, [initialBlob]);
 

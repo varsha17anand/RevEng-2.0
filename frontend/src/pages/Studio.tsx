@@ -19,12 +19,20 @@ interface StudioProps {
   onNavigateToFeed?: (imageBlob: Blob) => void;
 }
 
+interface StudioResultMetadata {
+  label: string;
+  fraction?: number;
+  tilesMarked?: number;
+  totalTiles?: number;
+}
+
 export const Studio: React.FC<StudioProps> = ({ onNavigateToFeed }) => {
   const [samples, setSamples] = useState<SampleItem[]>([]);
   const [currentBaseBlob, setCurrentBaseBlob] = useState<Blob | null>(null);
   const [baseImageSrc, setBaseImageSrc] = useState<string>('');
   const [resultImageSrc, setResultImageSrc] = useState<string>('');
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
+  const [resultMetadata, setResultMetadata] = useState<StudioResultMetadata | null>(null);
   const [prompt, setPrompt] = useState<string>('A vibrant university campus in autumn');
   const [editStyle, setEditStyle] = useState<string>('cyberpunk');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -62,6 +70,7 @@ export const Studio: React.FC<StudioProps> = ({ onNavigateToFeed }) => {
       setResultImageSrc('');
       setResultBlob(null);
       setManifestInfo(null);
+      setResultMetadata(null);
     } catch (e) {
       console.error(e);
     }
@@ -76,6 +85,7 @@ export const Studio: React.FC<StudioProps> = ({ onNavigateToFeed }) => {
     setResultImageSrc('');
     setResultBlob(null);
     setManifestInfo(null);
+    setResultMetadata(null);
   };
 
   const handleGenerateFull = async () => {
@@ -89,6 +99,12 @@ export const Studio: React.FC<StudioProps> = ({ onNavigateToFeed }) => {
       setResultBlob(b);
       setCurrentBaseBlob(b);
       setManifestInfo(res.manifest);
+      setResultMetadata({
+        label: res.label,
+        fraction: 1.0,
+        tilesMarked: res.tiles_marked,
+        totalTiles: res.total_tiles,
+      });
       setStatusMsg('Successfully generated AI image with Ed25519 signed manifest!');
     } catch (err: any) {
       setStatusMsg(`Error: ${err.message}`);
@@ -109,6 +125,12 @@ export const Studio: React.FC<StudioProps> = ({ onNavigateToFeed }) => {
       setResultBlob(b);
       setCurrentBaseBlob(b);
       setManifestInfo(res.manifest);
+      setResultMetadata({
+        label: res.label,
+        fraction: res.fraction_edited,
+        tilesMarked: res.edited_tiles.length,
+        totalTiles: 64,
+      });
       setStatusMsg(
         `Localized AI edit completed! Watermark embedded only in ${res.edited_tiles.length} tiles (${Math.round(
           res.fraction_edited * 100
@@ -200,6 +222,26 @@ export const Studio: React.FC<StudioProps> = ({ onNavigateToFeed }) => {
                 alt="Studio Canvas"
                 className="w-full h-full object-cover pointer-events-none"
               />
+
+              {/* Result Badge Overlay on Canvas */}
+              {resultImageSrc && resultMetadata && (
+                <div className="absolute top-3 left-3 z-10 flex items-center gap-2 pointer-events-none">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold shadow-lg backdrop-blur-md ${
+                      resultMetadata.label.includes('AI-generated')
+                        ? 'bg-purple-950/90 text-purple-200 border border-purple-500/50'
+                        : 'bg-amber-950/90 text-amber-200 border border-amber-500/50'
+                    }`}
+                  >
+                    {resultMetadata.label}
+                  </span>
+                  {resultMetadata.fraction !== undefined && (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-mono bg-neutral-900/90 text-neutral-300 border border-neutral-700/60 backdrop-blur-md">
+                      {Math.round(resultMetadata.fraction * 100)}% ({resultMetadata.tilesMarked}/{resultMetadata.totalTiles || 64} tiles)
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* Selection Bounding Box Overlay */}
               {!resultImageSrc && (
@@ -334,10 +376,47 @@ export const Studio: React.FC<StudioProps> = ({ onNavigateToFeed }) => {
           {/* Result Actions & Download */}
           {resultImageSrc && (
             <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-900/40 space-y-3">
-              <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Watermarked Asset Ready</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Watermarked Asset Ready</span>
+                </div>
+                {resultMetadata && (
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold font-mono ${
+                      resultMetadata.label.includes('AI-generated')
+                        ? 'bg-purple-950 text-purple-300 border border-purple-500/40'
+                        : 'bg-amber-950 text-amber-300 border border-amber-500/40'
+                    }`}
+                  >
+                    {resultMetadata.label}
+                  </span>
+                )}
               </div>
+
+              {/* Classification & Edited Percentage Breakdown */}
+              {resultMetadata && (
+                <div className="p-3 rounded-xl bg-neutral-950/80 border border-neutral-800/80 text-xs space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-neutral-400">Classification Label:</span>
+                    <span className="font-semibold text-neutral-200">{resultMetadata.label}</span>
+                  </div>
+                  {resultMetadata.fraction !== undefined && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-neutral-400">Edited Region:</span>
+                      <span className="font-mono text-cyan-300 font-semibold">
+                        {Math.round(resultMetadata.fraction * 100)}% ({resultMetadata.tilesMarked}/{resultMetadata.totalTiles || 64} tiles)
+                      </span>
+                    </div>
+                  )}
+                  {manifestInfo?.signature && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-neutral-400">Cryptographic Provenance:</span>
+                      <span className="text-emerald-400 font-mono text-[11px] font-semibold">Ed25519 Signed</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="flex items-center gap-2">
                 <button
