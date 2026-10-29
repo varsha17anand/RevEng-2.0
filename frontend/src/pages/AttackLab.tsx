@@ -29,6 +29,7 @@ export const AttackLab: React.FC = () => {
   const selectSample = async (sample: SampleItem, type: 'watermarked' | 'clean' = targetType) => {
     setSelectedSample(sample);
     setErrorMsg(null);
+    setRows([]);
     try {
       if (type === 'watermarked') {
         const genRes = await fetch('/api/studio/generate', {
@@ -51,6 +52,7 @@ export const AttackLab: React.FC = () => {
 
   const handleTargetTypeChange = async (newType: 'watermarked' | 'clean') => {
     setTargetType(newType);
+    setRows([]);
     if (selectedSample) {
       await selectSample(selectedSample, newType);
     }
@@ -60,6 +62,7 @@ export const AttackLab: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setSelectedSample(null);
+    setRows([]);
     setCurrentBlob(file);
     setCurrentPreviewSrc(URL.createObjectURL(file));
   };
@@ -68,6 +71,7 @@ export const AttackLab: React.FC = () => {
     if (!currentBlob) return;
     setIsRunning(true);
     setErrorMsg(null);
+    setRows([]);
     try {
       const res = await runAttackLab(currentBlob);
       setRows(res.rows);
@@ -201,7 +205,17 @@ export const AttackLab: React.FC = () => {
       )}
 
       {/* Robustness Results Table */}
-      {rows.length > 0 ? (
+      {isRunning ? (
+        <div className="p-12 text-center rounded-2xl bg-neutral-950/80 border border-neutral-800 space-y-4">
+          <div className="w-10 h-10 border-3 border-neutral-700 border-t-cyan-400 rounded-full animate-spin mx-auto"></div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-neutral-200">Executing 10-Point Adversarial Stress Suite...</h3>
+            <p className="text-xs text-neutral-500 font-mono">
+              Running screenshots, JPEG compression (q90/75/50), odd crops, brightness shifts, and scale attacks
+            </p>
+          </div>
+        </div>
+      ) : rows.length > 0 ? (
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs text-neutral-400 px-1">
             <span>
@@ -209,7 +223,7 @@ export const AttackLab: React.FC = () => {
             </span>
             <span>Real computation • No hardcoded metrics</span>
           </div>
-          <RobustnessTable rows={rows} isLoading={isRunning} />
+          <RobustnessTable rows={rows} isLoading={isRunning} targetType={targetType} />
         </div>
       ) : (
         <div className="p-12 text-center rounded-2xl bg-neutral-950/50 border border-neutral-800/80 space-y-3">

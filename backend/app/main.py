@@ -260,7 +260,7 @@ async def run_attack_lab(
     rows: List[AttackLabRow] = []
 
     attack_labels = {
-        "none": "Original (Clean)",
+        "none": "Baseline (No Attack)",
         "screenshot_strip": "Screenshot / Metadata Strip",
         "jpeg_q90": "JPEG Quality 90",
         "jpeg_q75": "JPEG Quality 75",
