@@ -229,3 +229,58 @@ def test_input_validation_and_sanitized_errors():
     assert "unable to decode image data" in detail
     assert "BytesIO" not in detail
     assert "0x" not in detail
+
+
+def test_non_square_image_generate_returns_512():
+    """Non-square uploads to /api/studio/generate must return a 512×512 image (no distortion)."""
+    import base64
+
+    # Create a wide landscape image (800×400) — a simple solid-colour PNG
+    wide_img = Image.fromarray(np.full((400, 800, 3), 120, dtype=np.uint8))
+    buf = io.BytesIO()
+    wide_img.save(buf, format="PNG")
+    base_bytes = buf.getvalue()
+
+    res = client.post(
+        "/api/studio/generate",
+        data={"prompt": "test landscape"},
+        files={"file": ("wide.png", base_bytes, "image/png")},
+    )
+    assert res.status_code == 200, res.text
+
+    raw_b64 = res.json()["image_base64"]
+    # Strip optional data-URL prefix
+    if "," in raw_b64:
+        raw_b64 = raw_b64.split(",", 1)[1]
+    result_bytes = base64.b64decode(raw_b64)
+    result_img = Image.open(io.BytesIO(result_bytes))
+    assert result_img.size == (512, 512), (
+        f"Expected 512×512 but got {result_img.size} — non-square upload was distorted"
+    )
+
+
+def test_non_square_image_edit_returns_512():
+    """Non-square uploads to /api/studio/edit must return a 512×512 image (no distortion)."""
+    import base64
+
+    # Create a tall portrait image (300×600)
+    tall_img = Image.fromarray(np.full((600, 300, 3), 80, dtype=np.uint8))
+    buf = io.BytesIO()
+    tall_img.save(buf, format="PNG")
+    base_bytes = buf.getvalue()
+
+    res = client.post(
+        "/api/studio/edit",
+        data={"x1": "100", "y1": "100", "x2": "300", "y2": "300", "style": "stylize"},
+        files={"file": ("tall.png", base_bytes, "image/png")},
+    )
+    assert res.status_code == 200, res.text
+
+    raw_b64 = res.json()["image_base64"]
+    if "," in raw_b64:
+        raw_b64 = raw_b64.split(",", 1)[1]
+    result_bytes = base64.b64decode(raw_b64)
+    result_img = Image.open(io.BytesIO(result_bytes))
+    assert result_img.size == (512, 512), (
+        f"Expected 512×512 but got {result_img.size} — non-square upload was distorted"
+    )

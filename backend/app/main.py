@@ -29,7 +29,7 @@ from app.watermark import (
 )
 from app.labeler import instagram_mode_label, truthlens_label
 from app.attacks import ATTACK_REGISTRY, apply_attack
-from app.ai_edit import generate_ai_image, edit_ai_region, VALID_EDIT_STYLES
+from app.ai_edit import generate_ai_image, edit_ai_region, VALID_EDIT_STYLES, square_crop_or_pad
 from app.schemas import (
     AnalyzeResponse,
     AttackLabResponse,

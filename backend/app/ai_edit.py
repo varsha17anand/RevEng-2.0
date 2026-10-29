@@ -23,6 +23,47 @@ from app.metadata import embed_metadata, IPTC_TRAINED_ALGORITHMIC, IPTC_COMPOSIT
 from app.provenance import create_manifest
 
 
+def square_crop_or_pad(
+    image: Image.Image,
+    target_size: int = 512,
+    mode: str = "crop"
+) -> Image.Image:
+    """Transform image to a target_size x target_size square preserving aspect ratio without distortion.
+
+    Args:
+        image: PIL Image of arbitrary dimensions (e.g. 1600x900).
+        target_size: Target square pixel dimension (default 512).
+        mode: "crop" (center-crop square) or "pad" (letterbox with black borders).
+
+    Returns:
+        Image.Image: Exactly (target_size, target_size) RGB image with preserved aspect ratio.
+    """
+    img = image.convert("RGB")
+    W, H = img.size
+
+    if W == target_size and H == target_size:
+        return img
+
+    if mode == "crop":
+        # Center-crop the largest possible square to prevent squashing/stretching
+        size = min(W, H)
+        left = (W - size) // 2
+        top = (H - size) // 2
+        cropped = img.crop((left, top, left + size, top + size))
+        return cropped.resize((target_size, target_size), Image.Resampling.LANCZOS)
+    else:
+        # Aspect-fit letterbox padding
+        scale = target_size / max(W, H)
+        new_w = max(1, int(W * scale))
+        new_h = max(1, int(H * scale))
+        resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        padded = Image.new("RGB", (target_size, target_size), (0, 0, 0))
+        pad_x = (target_size - new_w) // 2
+        pad_y = (target_size - new_h) // 2
+        padded.paste(resized, (pad_x, pad_y))
+        return padded
+
+
 def fetch_pollinations_image(prompt: str, seed: int = 42, timeout: int = 4) -> Optional[Image.Image]:
     """Fetch an AI-generated image from Pollinations.ai based on prompt."""
     try:
@@ -131,19 +172,19 @@ def generate_ai_image(
         Tuple of (watermarked_image, encoded_bytes, manifest_dict).
     """
     if base_image is not None:
-        img = base_image.convert("RGB").resize((512, 512), Image.Resampling.LANCZOS)
+        img = square_crop_or_pad(base_image, target_size=512, mode="crop")
     else:
         # 1. Attempt real AI generation using Pollinations AI (works in production deployment on Render)
-        fetched = fetch_pollinations_image(prompt=prompt, seed=seed, timeout=12)
+        fetched = fetch_pollinations_image(prompt=prompt, seed=seed)
         if fetched is not None:
-            img = fetched
+            img = square_crop_or_pad(fetched, target_size=512, mode="crop")
         else:
             # 2. Check if samples exist to use rich photographic base
             root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
             samples = sorted(glob.glob(os.path.join(root_dir, "samples", "*.jpg"))) or sorted(glob.glob("samples/*.jpg"))
             if samples:
                 idx = seed % len(samples)
-                img = Image.open(samples[idx]).convert("RGB").resize((512, 512), Image.Resampling.LANCZOS)
+                img = square_crop_or_pad(Image.open(samples[idx]), target_size=512, mode="crop")
             else:
                 img = generate_synthetic_scene(512, 512, seed=seed, prompt=prompt)
 
@@ -200,6 +241,8 @@ def edit_ai_region(
         )
 
     img_rgb = image.convert("RGB")
+    if img_rgb.size != (512, 512):
+        img_rgb = square_crop_or_pad(img_rgb, target_size=512, mode="crop")
     W, H = img_rgb.size
 
     x1, y1, x2, y2 = box
