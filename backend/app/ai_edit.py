@@ -23,7 +23,7 @@ from app.metadata import embed_metadata, IPTC_TRAINED_ALGORITHMIC, IPTC_COMPOSIT
 from app.provenance import create_manifest
 
 
-def fetch_pollinations_image(prompt: str, seed: int = 42, timeout: int = 12) -> Optional[Image.Image]:
+def fetch_pollinations_image(prompt: str, seed: int = 42, timeout: int = 4) -> Optional[Image.Image]:
     """Fetch an AI-generated image from Pollinations.ai based on prompt."""
     try:
         clean_prompt = prompt.strip() or "A scenic photographic scene"

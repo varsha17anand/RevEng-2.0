@@ -167,13 +167,13 @@ def get_sample_image(filename: str):
 
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
-async def analyze_image(
+def analyze_image(
     file: UploadFile = File(...),
     mode: str = Form("truthlens")
 ):
     """Analyze an image using Instagram mode or TruthLens mode."""
     t0 = time.time()
-    content = await file.read()
+    content = file.file.read()
     img = validate_image_file(file, content)
 
     mode_lower = mode.strip().lower()
@@ -225,12 +225,12 @@ async def analyze_image(
 
 
 @app.post("/api/attack", response_model=AttackResponse)
-async def run_single_attack(
+def run_single_attack(
     file: UploadFile = File(...),
     attack: str = Form(...)
 ):
     """Apply an adversarial attack to an image and return modified image data."""
-    content = await file.read()
+    content = file.file.read()
     img = validate_image_file(file, content)
 
     if attack not in ATTACK_REGISTRY:
@@ -249,12 +249,12 @@ async def run_single_attack(
 
 
 @app.post("/api/attack-lab", response_model=AttackLabResponse)
-async def run_attack_lab(
+def run_attack_lab(
     file: UploadFile = File(...)
 ):
     """Run all 10 attacks on the uploaded image and return comparative results."""
     t0 = time.time()
-    content = await file.read()
+    content = file.file.read()
     img = validate_image_file(file, content)
 
     rows: List[AttackLabRow] = []
@@ -309,7 +309,7 @@ async def run_attack_lab(
 
 
 @app.post("/api/studio/generate", response_model=StudioGenerateResponse)
-async def studio_generate(
+def studio_generate(
     file: Optional[UploadFile] = File(None),
     prompt: str = Form("A scenic university campus at sunset"),
     sample_id: Optional[str] = Form(None)
@@ -317,7 +317,7 @@ async def studio_generate(
     """Generate a simulated AI image, fully marked with signed provenance."""
     base_img = None
     if file:
-        content = await file.read()
+        content = file.file.read()
         base_img = validate_image_file(file, content)
     elif sample_id:
         match = next((s for s in SAMPLE_METADATA if s["id"] == sample_id), None)
@@ -344,7 +344,7 @@ async def studio_generate(
 
 
 @app.post("/api/studio/edit", response_model=StudioEditResponse)
-async def studio_edit(
+def studio_edit(
     file: UploadFile = File(...),
     x1: int = Form(...),
     y1: int = Form(...),
@@ -353,7 +353,7 @@ async def studio_edit(
     style: str = Form("cyberpunk")
 ):
     """Apply localized AI edit inside a rectangle, marking only those tiles."""
-    content = await file.read()
+    content = file.file.read()
     img = validate_image_file(file, content)
 
     box = (x1, y1, x2, y2)
