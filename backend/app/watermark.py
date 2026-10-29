@@ -28,7 +28,8 @@ COEFF_COLS = np.array([c for r, c in COEFF_INDICES], dtype=np.int64)
 DEFAULT_SECRET_KEY = "truthlens-v1-meta-194"
 DEFAULT_BASE_STRENGTH = 3.5
 DETECTION_THRESHOLD = 4.0
-GENERATED_THRESHOLD = 0.85
+GENERATED_THRESHOLD = 0.25
+RESYNC_DETECTION_THRESHOLD = 4.5
 TILE_SIZE = 64
 BLOCK_SIZE = 8
 
@@ -218,33 +219,47 @@ def detect_watermark(
 
     pattern = get_watermark_pattern(secret_key)
 
+    # 1. Evaluate standard grid offset (0, 0) first
+    z_mat_0 = detect_grid_vectorized(y_centered, pattern)
+    if z_mat_0.size == 0:
+        return z_mat_0, (0, 0), 0.0, 0.0
+
+    top_k_0 = max(1, int(np.ceil(0.10 * len(z_mat_0.flatten()))))
+    score_0 = float(np.mean(np.sort(z_mat_0.flatten())[-top_k_0:]))
+
     best_offset = (0, 0)
-    best_score = -1e9
-    best_z_matrix = np.zeros((0, 0), dtype=np.float32)
+    best_score = score_0
+    best_z_matrix = z_mat_0
 
-    offsets_to_try = [
-        (dy, dx)
-        for dy in range(BLOCK_SIZE if sync_crop else 1)
-        for dx in range(BLOCK_SIZE if sync_crop else 1)
-    ]
+    # 2. If offset (0, 0) is below detection threshold and sync_crop is requested,
+    # evaluate remaining 63 offsets to resynchronize after an odd-pixel crop.
+    if score_0 < DETECTION_THRESHOLD and sync_crop:
+        for dy in range(BLOCK_SIZE):
+            for dx in range(BLOCK_SIZE):
+                if dy == 0 and dx == 0:
+                    continue
+                sub_y = y_centered[dy:, dx:]
+                z_mat = detect_grid_vectorized(sub_y, pattern)
+                if z_mat.size == 0:
+                    continue
 
-    for dy, dx in offsets_to_try:
-        sub_y = y_centered[dy:, dx:]
-        z_mat = detect_grid_vectorized(sub_y, pattern)
-        if z_mat.size == 0:
-            continue
+                top_k = max(1, int(np.ceil(0.10 * len(z_mat.flatten()))))
+                score = float(np.mean(np.sort(z_mat.flatten())[-top_k:]))
 
-        z_flat = z_mat.flatten()
-        top_k = max(1, int(np.ceil(0.10 * len(z_flat))))
-        score = float(np.mean(np.sort(z_flat)[-top_k:]))
+                if score > best_score:
+                    best_score = score
+                    best_offset = (dy, dx)
+                    best_z_matrix = z_mat
 
-        if score > best_score:
-            best_score = score
-            best_offset = (dy, dx)
-            best_z_matrix = z_mat
+        # For an offset other than (0, 0) to be accepted as a valid crop resync,
+        # it must clearly exceed the noise floor (clean images produce at most ~4.14 under 64 draws).
+        if best_offset != (0, 0) and best_score < RESYNC_DETECTION_THRESHOLD:
+            best_offset = (0, 0)
+            best_score = score_0
+            best_z_matrix = z_mat_0
 
-    if best_z_matrix.size == 0:
-        return best_z_matrix, (0, 0), 0.0, 0.0
+    if best_score < DETECTION_THRESHOLD:
+        return best_z_matrix, (0, 0), 0.0, float(best_score)
 
     marked_tiles = best_z_matrix > DETECTION_THRESHOLD
     fraction_marked = float(np.mean(marked_tiles))

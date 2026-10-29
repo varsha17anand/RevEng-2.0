@@ -11,6 +11,8 @@ import glob
 import io
 import math
 import os
+import urllib.request
+import urllib.parse
 from typing import Tuple, List, Optional, Dict, Any
 
 import numpy as np
@@ -21,29 +23,65 @@ from app.metadata import embed_metadata, IPTC_TRAINED_ALGORITHMIC, IPTC_COMPOSIT
 from app.provenance import create_manifest
 
 
-def generate_synthetic_scene(width: int = 512, height: int = 512, seed: int = 42) -> Image.Image:
-    """Generate a high-detail procedural photographic landscape.
+def fetch_pollinations_image(prompt: str, seed: int = 42, timeout: int = 12) -> Optional[Image.Image]:
+    """Fetch an AI-generated image from Pollinations.ai based on prompt."""
+    try:
+        clean_prompt = prompt.strip() or "A scenic photographic scene"
+        encoded = urllib.parse.quote(clean_prompt)
+        url = f"https://image.pollinations.ai/prompt/{encoded}?width=512&height=512&nologo=true&seed={seed}"
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (TruthLens AI Studio; https://truthlens-yihz.onrender.com/)"
+            }
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = resp.read()
+            img = Image.open(io.BytesIO(data)).convert("RGB")
+            return img.resize((512, 512), Image.Resampling.LANCZOS)
+    except Exception:
+        # Expected in offline/sandbox environments; fallback smoothly
+        return None
 
-    Creates realistic natural gradient layers: sky, sun, mountain ranges,
-    and reflective water.
+
+def generate_synthetic_scene(width: int = 512, height: int = 512, seed: int = 42, prompt: str = "") -> Image.Image:
+    """Generate a high-detail procedural photographic scene.
+
+    Creates realistic natural gradient layers tailored to prompt themes:
+    nature/landscape, cyberpunk/neon, warm sunset, or twilight mountains.
     """
     arr = np.zeros((height, width, 3), dtype=np.float32)
     rng = np.random.RandomState(seed)
+    p_lower = prompt.lower()
+
+    is_cyberpunk = any(k in p_lower for k in ["cyber", "neon", "future", "sci-fi", "robot"])
+    is_warm = any(k in p_lower for k in ["sunset", "sunrise", "golden", "autumn", "fall", "dog", "portrait"])
 
     for y in range(height):
         for x in range(width):
-            # Sky twilight gradient
             ratio = y / height
-            r = 255 * (0.85 * (1 - ratio) + 0.20 * ratio)
-            g = 255 * (0.45 * (1 - ratio) + 0.15 * ratio)
-            b = 255 * (0.65 * (1 - ratio) + 0.40 * ratio)
+            if is_cyberpunk:
+                # Deep neon darks with vibrant cyan and violet gradients
+                r = 255 * (0.15 * (1 - ratio) + 0.65 * ratio)
+                g = 255 * (0.05 * (1 - ratio) + 0.25 * ratio)
+                b = 255 * (0.45 * (1 - ratio) + 0.90 * ratio)
+            elif is_warm:
+                # Warm golden hour gradient
+                r = 255 * (0.95 * (1 - ratio) + 0.35 * ratio)
+                g = 255 * (0.55 * (1 - ratio) + 0.20 * ratio)
+                b = 255 * (0.25 * (1 - ratio) + 0.45 * ratio)
+            else:
+                # Sky twilight gradient
+                r = 255 * (0.85 * (1 - ratio) + 0.20 * ratio)
+                g = 255 * (0.45 * (1 - ratio) + 0.15 * ratio)
+                b = 255 * (0.65 * (1 - ratio) + 0.40 * ratio)
 
-            # Mountain silhouette
+            # Mountain silhouette or structural geometry
             m1 = int(260 + 50 * math.sin(x / 45.0) + 25 * math.cos(x / 20.0))
             if y > m1:
                 r, g, b = 30 + (y - m1) * 0.15, 25 + (y - m1) * 0.15, 45 + (y - m1) * 0.2
 
-            # Foreground water reflection with ripples
+            # Foreground reflection with ripples
             water_line = 360
             if y > water_line:
                 ripple = math.sin((x + y * 2) / 8.0) * 15
@@ -53,18 +91,28 @@ def generate_synthetic_scene(width: int = 512, height: int = 512, seed: int = 42
 
             arr[y, x] = [r, g, b]
 
-    # Sun glow
+    # Glowing focal point (sun / neon orb)
     cx, cy = int(width * 0.65), int(height * 0.40)
     for y in range(max(0, cy - 60), min(height, cy + 60)):
         for x in range(max(0, cx - 60), min(width, cx + 60)):
             dist = math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
             if dist < 50:
                 glow = (1.0 - dist / 50.0) ** 1.5
-                arr[y, x, 0] = min(255, arr[y, x, 0] + 160 * glow)
-                arr[y, x, 1] = min(255, arr[y, x, 1] + 120 * glow)
-                arr[y, x, 2] = min(255, arr[y, x, 2] + 40 * glow)
+                if is_cyberpunk:
+                    arr[y, x, 0] = min(255, arr[y, x, 0] + 50 * glow)
+                    arr[y, x, 1] = min(255, arr[y, x, 1] + 200 * glow)
+                    arr[y, x, 2] = min(255, arr[y, x, 2] + 240 * glow)
+                elif is_warm:
+                    arr[y, x, 0] = min(255, arr[y, x, 0] + 200 * glow)
+                    arr[y, x, 1] = min(255, arr[y, x, 1] + 160 * glow)
+                    arr[y, x, 2] = min(255, arr[y, x, 2] + 40 * glow)
+                else:
+                    arr[y, x, 0] = min(255, arr[y, x, 0] + 160 * glow)
+                    arr[y, x, 1] = min(255, arr[y, x, 1] + 120 * glow)
+                    arr[y, x, 2] = min(255, arr[y, x, 2] + 40 * glow)
 
-    return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
+    img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
+    return img
 
 
 def generate_ai_image(
@@ -85,14 +133,19 @@ def generate_ai_image(
     if base_image is not None:
         img = base_image.convert("RGB").resize((512, 512), Image.Resampling.LANCZOS)
     else:
-        # Check if samples exist to use rich photographic base
-        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-        samples = sorted(glob.glob(os.path.join(root_dir, "samples", "*.jpg"))) or sorted(glob.glob("samples/*.jpg"))
-        if samples:
-            idx = seed % len(samples)
-            img = Image.open(samples[idx]).convert("RGB").resize((512, 512), Image.Resampling.LANCZOS)
+        # 1. Attempt real AI generation using Pollinations AI (works in production deployment on Render)
+        fetched = fetch_pollinations_image(prompt=prompt, seed=seed, timeout=12)
+        if fetched is not None:
+            img = fetched
         else:
-            img = generate_synthetic_scene(512, 512, seed=seed)
+            # 2. Check if samples exist to use rich photographic base
+            root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+            samples = sorted(glob.glob(os.path.join(root_dir, "samples", "*.jpg"))) or sorted(glob.glob("samples/*.jpg"))
+            if samples:
+                idx = seed % len(samples)
+                img = Image.open(samples[idx]).convert("RGB").resize((512, 512), Image.Resampling.LANCZOS)
+            else:
+                img = generate_synthetic_scene(512, 512, seed=seed, prompt=prompt)
 
     # Apply fully marked tile watermark (all tiles marked)
     watermarked = embed_watermark(img, tile_mask=None, base=DEFAULT_BASE_STRENGTH)
@@ -190,8 +243,8 @@ def edit_ai_region(
             tile_mask[ty, tx] = True
             edited_tiles.append((ty, tx))
 
-    # 3. Watermark ONLY the marked tiles
-    watermarked = embed_watermark(visually_edited_img, tile_mask=tile_mask, base=DEFAULT_BASE_STRENGTH)
+    # 3. Watermark ONLY the marked tiles with confident strength
+    watermarked = embed_watermark(visually_edited_img, tile_mask=tile_mask, base=4.5)
 
     # 4. Create signed Ed25519 provenance manifest
     manifest = create_manifest(

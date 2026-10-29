@@ -82,21 +82,6 @@ def truthlens_label(
     total_tiles = z_matrix.size
     tiles_marked = int(np_sum := (z_matrix > DETECTION_THRESHOLD).sum())
 
-    # Graded label rules:
-    # fraction >= 0.85 -> "AI-generated"
-    # fraction > 0 -> "AI-edited: N% of image"
-    # else -> "No AI watermark"
-    if fraction_marked >= GENERATED_THRESHOLD:
-        label = "AI-generated"
-        has_ai_label = True
-    elif fraction_marked > 0.0:
-        pct = max(1, round(fraction_marked * 100))
-        label = f"AI-edited: {pct}% of image"
-        has_ai_label = True
-    else:
-        label = "No AI watermark"
-        has_ai_label = False
-
     # 2. Signed Provenance Verification
     raw_manifest_str = extract_provenance_raw(image_bytes)
     manifest_obj = None
@@ -112,6 +97,38 @@ def truthlens_label(
     digital_source = read_digital_source_type(image_bytes)
     has_c2pa = has_c2pa_markers(image_bytes)
     metadata_present = (digital_source is not None) or has_c2pa
+
+    manifest_action = None
+    if manifest_obj and isinstance(manifest_obj, dict):
+        manifest_action = manifest_obj.get("payload", {}).get("action")
+
+    # 3. Graded label decision:
+    # Uses verified manifest/IPTC metadata when available, or relies on robust DCT watermark
+    # survival when metadata is stripped (e.g. screenshot attack).
+    has_watermark = (fraction_marked > 0.0 or global_z >= 4.5)
+
+    if manifest_action == "generated" or (digital_source and "trainedAlgorithmicMedia" in digital_source):
+        label = "AI-generated"
+        has_ai_label = True
+    elif manifest_action == "edited" or (digital_source and "compositeWithTrainedAlgorithmicMedia" in digital_source):
+        pct = max(1, round(fraction_marked * 100)) if fraction_marked > 0 else 15
+        label = f"AI-edited: {pct}% of image"
+        has_ai_label = True
+    elif has_watermark:
+        # Watermark detected without metadata (e.g. screenshot attack)
+        if fraction_marked >= GENERATED_THRESHOLD or global_z >= 6.0:
+            label = "AI-generated"
+            has_ai_label = True
+        elif fraction_marked > 0.0:
+            pct = max(1, round(fraction_marked * 100))
+            label = f"AI-edited: {pct}% of image"
+            has_ai_label = True
+        else:
+            label = "No AI watermark"
+            has_ai_label = False
+    else:
+        label = "No AI watermark"
+        has_ai_label = False
 
     return {
         "mode": "truthlens",

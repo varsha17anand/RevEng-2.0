@@ -7,6 +7,12 @@ import { Shield, Sparkles, Wand2, Zap, Info } from 'lucide-react';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<'feed' | 'studio' | 'attackLab' | 'howItWorks'>('feed');
+  const [feedInitialBlob, setFeedInitialBlob] = useState<Blob | null>(null);
+
+  const handleNavigateToFeed = (blob: Blob) => {
+    setFeedInitialBlob(blob);
+    setActiveTab('feed');
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0c10] text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
@@ -73,9 +79,9 @@ export function App() {
 
       {/* Main Tab Content */}
       <main className="flex-1 pb-16">
-        {activeTab === 'feed' && <Feed />}
+        {activeTab === 'feed' && <Feed initialBlob={feedInitialBlob} />}
         {activeTab === 'studio' && (
-          <Studio onNavigateToFeed={() => setActiveTab('feed')} />
+          <Studio onNavigateToFeed={handleNavigateToFeed} />
         )}
         {activeTab === 'attackLab' && <AttackLab />}
         {activeTab === 'howItWorks' && <HowItWorks />}

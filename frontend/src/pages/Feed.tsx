@@ -5,9 +5,14 @@ import { fetchSamples, analyzeImage, runAttack, urlToBlob } from '../api';
 import type { SampleItem, AnalyzeResponse } from '../api';
 import { Upload, Sparkles, Shield, AlertCircle, RefreshCw, Eye } from 'lucide-react';
 
-export const Feed: React.FC = () => {
+interface FeedProps {
+  initialBlob?: Blob | null;
+}
+
+export const Feed: React.FC<FeedProps> = ({ initialBlob }) => {
   const [samples, setSamples] = useState<SampleItem[]>([]);
   const [selectedSample, setSelectedSample] = useState<SampleItem | null>(null);
+  const [sampleType, setSampleType] = useState<'watermarked' | 'clean'>('watermarked');
   const [currentImageSrc, setCurrentImageSrc] = useState<string>('');
   const [currentBlob, setCurrentBlob] = useState<Blob | null>(null);
   const [mode, setMode] = useState<'instagram' | 'truthlens'>('truthlens');
@@ -16,19 +21,27 @@ export const Feed: React.FC = () => {
   const [isAttacking, setIsAttacking] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Load sample photos on mount
+  // Load sample photos on mount or handle initialBlob
   useEffect(() => {
-    fetchSamples()
-      .then((data) => {
-        setSamples(data);
-        if (data.length > 0) {
-          loadSampleImage(data[0]);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load samples:', err);
-      });
-  }, []);
+    if (initialBlob) {
+      setSelectedSample(null);
+      const url = URL.createObjectURL(initialBlob);
+      setCurrentImageSrc(url);
+      setCurrentBlob(initialBlob);
+      runAnalysis(initialBlob, mode);
+    } else {
+      fetchSamples()
+        .then((data) => {
+          setSamples(data);
+          if (data.length > 0) {
+            loadSampleImage(data[0], sampleType);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load samples:', err);
+        });
+    }
+  }, [initialBlob]);
 
   // Re-run analysis whenever mode or image changes
   useEffect(() => {
@@ -37,15 +50,30 @@ export const Feed: React.FC = () => {
     }
   }, [mode]);
 
-  const loadSampleImage = async (sample: SampleItem) => {
+  const loadSampleImage = async (sample: SampleItem, type: 'watermarked' | 'clean' = sampleType) => {
     setSelectedSample(sample);
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      const blob = await urlToBlob(sample.url);
-      setCurrentBlob(blob);
-      setCurrentImageSrc(sample.url);
-      await runAnalysis(blob, mode);
+      if (type === 'watermarked') {
+        const formData = new FormData();
+        formData.append('prompt', sample.title);
+        formData.append('sample_id', sample.id);
+        const res = await fetch('/api/studio/generate', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        setCurrentImageSrc(data.image_base64);
+        const blob = await urlToBlob(data.image_base64);
+        setCurrentBlob(blob);
+        await runAnalysis(blob, mode);
+      } else {
+        const blob = await urlToBlob(sample.url);
+        setCurrentBlob(blob);
+        setCurrentImageSrc(sample.url);
+        await runAnalysis(blob, mode);
+      }
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to load image');
     } finally {
@@ -179,6 +207,38 @@ export const Feed: React.FC = () => {
               Select an authentic campus, portrait, urban or nature photograph to inspect:
             </p>
 
+            {/* Version Toggle: AI Watermarked vs Clean */}
+            <div className="flex items-center gap-1.5 mb-3 p-1 rounded-xl bg-neutral-900 border border-neutral-800 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => {
+                  setSampleType('watermarked');
+                  if (selectedSample) loadSampleImage(selectedSample, 'watermarked');
+                }}
+                className={`flex-1 py-1 px-2.5 rounded-lg transition-all cursor-pointer ${
+                  sampleType === 'watermarked'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                AI Watermarked
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSampleType('clean');
+                  if (selectedSample) loadSampleImage(selectedSample, 'clean');
+                }}
+                className={`flex-1 py-1 px-2.5 rounded-lg transition-all cursor-pointer ${
+                  sampleType === 'clean'
+                    ? 'bg-neutral-800 text-white shadow-md'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                Clean Original
+              </button>
+            </div>
+
             <div className="grid grid-cols-3 gap-2.5">
               {samples.map((s) => {
                 const isSelected = selectedSample?.id === s.id;
@@ -186,7 +246,7 @@ export const Feed: React.FC = () => {
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => loadSampleImage(s)}
+                    onClick={() => loadSampleImage(s, sampleType)}
                     className={`relative rounded-xl overflow-hidden aspect-square border-2 transition-all cursor-pointer group ${
                       isSelected
                         ? 'border-cyan-400 shadow-lg shadow-cyan-950'

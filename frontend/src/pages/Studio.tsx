@@ -80,14 +80,16 @@ export const Studio: React.FC<StudioProps> = ({ onNavigateToFeed }) => {
 
   const handleGenerateFull = async () => {
     setIsProcessing(true);
-    setStatusMsg('Synthesizing image & embedding DCT tile watermark across all 64 tiles...');
+    setStatusMsg('Generating AI image from prompt & embedding TruthLens watermark across all 64 tiles...');
     try {
-      const res = await studioGenerate(prompt, undefined, currentBaseBlob || undefined);
+      const res = await studioGenerate(prompt);
       setResultImageSrc(res.image_base64);
+      setBaseImageSrc(res.image_base64);
       const b = await urlToBlob(res.image_base64);
       setResultBlob(b);
+      setCurrentBaseBlob(b);
       setManifestInfo(res.manifest);
-      setStatusMsg('Successfully generated fully watermarked image with Ed25519 signed manifest!');
+      setStatusMsg('Successfully generated AI image with Ed25519 signed manifest!');
     } catch (err: any) {
       setStatusMsg(`Error: ${err.message}`);
     } finally {
@@ -102,8 +104,10 @@ export const Studio: React.FC<StudioProps> = ({ onNavigateToFeed }) => {
     try {
       const res = await studioEdit(currentBaseBlob, box, editStyle);
       setResultImageSrc(res.image_base64);
+      setBaseImageSrc(res.image_base64);
       const b = await urlToBlob(res.image_base64);
       setResultBlob(b);
+      setCurrentBaseBlob(b);
       setManifestInfo(res.manifest);
       setStatusMsg(
         `Localized AI edit completed! Watermark embedded only in ${res.edited_tiles.length} tiles (${Math.round(

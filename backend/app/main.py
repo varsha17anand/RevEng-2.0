@@ -321,7 +321,8 @@ async def studio_generate(
             if os.path.exists(path):
                 base_img = Image.open(path).convert("RGB")
 
-    watermarked_img, img_bytes, manifest = generate_ai_image(prompt=prompt, seed=42, base_image=base_img)
+    seed = (abs(hash(prompt)) % 10000) if prompt else 42
+    watermarked_img, img_bytes, manifest = generate_ai_image(prompt=prompt, seed=seed, base_image=base_img)
     b64 = bytes_to_base64_data_url(img_bytes, format="PNG")
 
     n_ty = watermarked_img.height // TILE_SIZE
