@@ -110,3 +110,56 @@ def test_attack_lab_endpoint():
     screenshot_row = next((r for r in data["rows"] if r["attack"] == "screenshot_strip"), None)
     assert screenshot_row is not None
     assert screenshot_row["instagram_detected"] is False
+
+
+def test_region_edit_survives_screenshot_attack():
+    """Verify localized region edit retains graded 'AI-edited' label after screenshot strip."""
+    import base64
+
+    # 1. Base 512x512 image
+    img = Image.fromarray(np.full((512, 512, 3), 130, dtype=np.uint8))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    base_bytes = buf.getvalue()
+
+    # 2. Localized region edit (4 tiles: 128, 128, 256, 256)
+    res_edit = client.post(
+        "/api/studio/edit",
+        files={"file": ("base.png", base_bytes, "image/png")},
+        data={"x1": 128, "y1": 128, "x2": 256, "y2": 256, "style": "cyberpunk"}
+    )
+    assert res_edit.status_code == 200
+    edit_data = res_edit.json()
+    assert edit_data["label"].startswith("AI-edited")
+
+    edit_bytes = base64.b64decode(edit_data["image_base64"].split(",")[1])
+
+    # 3. Apply screenshot attack (metadata strip)
+    res_attack = client.post(
+        "/api/attack",
+        files={"file": ("edited.png", edit_bytes, "image/png")},
+        data={"attack": "screenshot_strip"}
+    )
+    assert res_attack.status_code == 200
+    attacked_bytes = base64.b64decode(res_attack.json()["image_base64"].split(",")[1])
+
+    # 4. Instagram mode must fail (metadata stripped)
+    res_ig = client.post(
+        "/api/analyze",
+        files={"file": ("attacked.png", attacked_bytes, "image/png")},
+        data={"mode": "instagram"}
+    )
+    assert res_ig.status_code == 200
+    assert res_ig.json()["has_ai_label"] is False
+    assert res_ig.json()["label"] == "No AI info"
+
+    # 5. TruthLens mode MUST survive and retain graded 'AI-edited' label (NOT 'AI-generated' or 'No AI watermark')
+    res_tl = client.post(
+        "/api/analyze",
+        files={"file": ("attacked.png", attacked_bytes, "image/png")},
+        data={"mode": "truthlens"}
+    )
+    assert res_tl.status_code == 200
+    assert res_tl.json()["has_ai_label"] is True
+    assert res_tl.json()["label"].startswith("AI-edited")
+    assert res_tl.json()["tiles_marked"] > 0

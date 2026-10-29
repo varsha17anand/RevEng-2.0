@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from typing import Dict, Any, Tuple
+import numpy as np
 from PIL import Image
 
 from app.watermark import detect_watermark, DETECTION_THRESHOLD, GENERATED_THRESHOLD, TILE_SIZE
@@ -102,30 +103,51 @@ def truthlens_label(
     if manifest_obj and isinstance(manifest_obj, dict):
         manifest_action = manifest_obj.get("payload", {}).get("action")
 
+    marked_mask = z_matrix > DETECTION_THRESHOLD
+    tiles_marked = int(np_sum := marked_mask.sum())
+    has_watermark = tiles_marked > 0
+
+    bbox_coverage = 0.0
+    if tiles_marked > 0:
+        rows, cols = np.where(marked_mask)
+        r_span = int(np.max(rows) - np.min(rows) + 1)
+        c_span = int(np.max(cols) - np.min(cols) + 1)
+        bbox_coverage = (r_span * c_span) / float(total_tiles)
+
     # 3. Graded label decision:
     # Uses verified manifest/IPTC metadata when available, or relies on robust DCT watermark
-    # survival when metadata is stripped (e.g. screenshot attack).
-    has_watermark = (fraction_marked > 0.0 or global_z >= 4.5)
-
+    # spatial distribution when metadata is stripped (e.g. screenshot attack).
     if manifest_action == "generated" or (digital_source and "trainedAlgorithmicMedia" in digital_source):
         label = "AI-generated"
         has_ai_label = True
     elif manifest_action == "edited" or (digital_source and "compositeWithTrainedAlgorithmicMedia" in digital_source):
-        pct = max(1, round(fraction_marked * 100)) if fraction_marked > 0 else 15
+        edited_list = manifest_obj.get("payload", {}).get("edited_tiles", []) if manifest_obj else []
+        if edited_list:
+            pct = max(1, round((len(edited_list) / float(total_tiles)) * 100))
+        elif bbox_coverage > 0:
+            pct = max(1, round(bbox_coverage * 100))
+        else:
+            pct = max(1, round(fraction_marked * 100))
         label = f"AI-edited: {pct}% of image"
         has_ai_label = True
     elif has_watermark:
-        # Watermark detected without metadata (e.g. screenshot attack)
-        if fraction_marked >= GENERATED_THRESHOLD or global_z >= 6.0:
+        # Watermark detected without metadata (e.g. screenshot attack / metadata strip):
+        # A fully generated image has watermarked tiles spanning across the entire image (bbox_coverage >= 70%),
+        # a high overall tile mean, and widespread tile detections.
+        mean_all = float(np.mean(z_matrix))
+        is_full_gen = (
+            (bbox_coverage >= 0.70 and fraction_marked >= 0.28 and mean_all >= 2.0)
+            or (fraction_marked >= 0.45)
+        )
+
+        if is_full_gen:
             label = "AI-generated"
             has_ai_label = True
-        elif fraction_marked > 0.0:
-            pct = max(1, round(fraction_marked * 100))
-            label = f"AI-edited: {pct}% of image"
-            has_ai_label = True
         else:
-            label = "No AI watermark"
-            has_ai_label = False
+            # Region edit: compute percentage from the bounding box of marked tiles
+            est_pct = max(1, round(bbox_coverage * 100))
+            label = f"AI-edited: {est_pct}% of image"
+            has_ai_label = True
     else:
         label = "No AI watermark"
         has_ai_label = False

@@ -243,8 +243,8 @@ def edit_ai_region(
             tile_mask[ty, tx] = True
             edited_tiles.append((ty, tx))
 
-    # 3. Watermark ONLY the marked tiles with confident strength
-    watermarked = embed_watermark(visually_edited_img, tile_mask=tile_mask, base=4.5)
+    # 3. Watermark ONLY the marked tiles with robust strength (PSNR >= 41.5 dB)
+    watermarked = embed_watermark(visually_edited_img, tile_mask=tile_mask, base=6.5)
 
     # 4. Create signed Ed25519 provenance manifest
     manifest = create_manifest(

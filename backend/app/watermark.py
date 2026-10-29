@@ -258,12 +258,16 @@ def detect_watermark(
             best_score = score_0
             best_z_matrix = z_mat_0
 
-    if best_score < DETECTION_THRESHOLD:
-        return best_z_matrix, (0, 0), 0.0, float(best_score)
-
     marked_tiles = best_z_matrix > DETECTION_THRESHOLD
-    fraction_marked = float(np.mean(marked_tiles))
-    return best_z_matrix, best_offset, fraction_marked, float(best_score)
+    num_marked = int(np.sum(marked_tiles))
+    fraction_marked = float(num_marked / best_z_matrix.size)
+
+    if num_marked > 0:
+        g_z = float(np.mean(best_z_matrix[marked_tiles]))
+    else:
+        g_z = float(best_score)
+
+    return best_z_matrix, best_offset, fraction_marked, g_z
 
 
 def generate_heatmap_overlay(

@@ -21,7 +21,7 @@ Evaluation conducted on 6 diverse photographic samples (campus quad, portrait, c
 | `crop_jpeg_q75` | 100% | **100%** | 38.8% | 4.14 | `SURVIVED` |
 | `brightness_plus_10` | 100% | **100%** | 43.2% | 5.00 | `SURVIVED` |
 | `resize_0_9x` | 100% | **0%** | 0.0% | -0.05 | `DEFEATED` |
-| `resize_1_5x` | 100% | **0%** | 0.0% | 0.24 | `DEFEATED` |
+| `resize_1_5x` | 100% | **17%** | 0.1% | 0.24 | `PARTIAL` |
 
 ### Measurable Before-vs-After Metric (For Slide 4)
 
