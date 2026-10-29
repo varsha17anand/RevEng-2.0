@@ -204,13 +204,13 @@ export const Feed: React.FC<FeedProps> = ({ initialBlob }) => {
           <div className="p-5 rounded-2xl bg-neutral-950/80 border border-neutral-800 shadow-xl">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold text-neutral-200">Test Sample Gallery</h3>
-              <span className="text-[11px] text-neutral-500 font-mono">6 Real Photos</span>
+              <span className="text-[11px] text-neutral-500 font-mono">6 Test Samples</span>
             </div>
             <p className="text-xs text-neutral-400 mb-4 leading-relaxed">
-              Select an authentic campus, portrait, urban or nature photograph to inspect:
+              Select a sample image to evaluate detection. Toggle between AI Watermarked (simulated generation) and Clean Baseline (evaluating false-positive resistance):
             </p>
 
-            {/* Version Toggle: AI Watermarked vs Clean */}
+            {/* Version Toggle: AI Watermarked vs Clean Baseline */}
             <div className="flex items-center gap-1.5 mb-3 p-1 rounded-xl bg-neutral-900 border border-neutral-800 text-xs font-semibold">
               <button
                 type="button"
@@ -238,7 +238,7 @@ export const Feed: React.FC<FeedProps> = ({ initialBlob }) => {
                     : 'text-neutral-400 hover:text-neutral-200'
                 }`}
               >
-                Clean Original
+                Clean Baseline
               </button>
             </div>
 

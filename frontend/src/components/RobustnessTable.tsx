@@ -94,11 +94,11 @@ export const RobustnessTable: React.FC<RobustnessTableProps> = ({
         <div className="p-3.5 rounded-xl bg-purple-950/20 border border-purple-900/40 flex items-center justify-between">
           <div>
             <span className="text-[11px] font-semibold text-purple-400 uppercase tracking-wider block">
-              {isCleanTarget ? 'Instagram Mode (Clean Photo)' : 'Instagram Mode (Metadata Check)'}
+              {isCleanTarget ? 'Instagram Mode (Clean Baseline)' : 'Instagram Mode (Metadata Check)'}
             </span>
             <span className="text-xs text-neutral-300">
               {isCleanTarget
-                ? 'Metadata check on authentic photo (no markers)'
+                ? 'Metadata check on clean baseline image (no markers)'
                 : 'Defeated by screenshot & metadata stripping'}
             </span>
           </div>
@@ -123,7 +123,7 @@ export const RobustnessTable: React.FC<RobustnessTableProps> = ({
             <span className={`text-[11px] font-semibold uppercase tracking-wider block ${
               isCleanTarget ? 'text-emerald-400' : 'text-cyan-400'
             }`}>
-              {isCleanTarget ? 'TruthLens Specificity (Clean Photo)' : 'TruthLens Mode (DCT Watermark)'}
+              {isCleanTarget ? 'TruthLens Specificity (Clean Baseline)' : 'TruthLens Mode (DCT Watermark)'}
             </span>
             <span className="text-xs text-neutral-300">
               {isCleanTarget
@@ -238,7 +238,7 @@ export const RobustnessTable: React.FC<RobustnessTableProps> = ({
                     ) : row.provenance_status === 'tampered' ? (
                       <span className="text-[11px] text-rose-400 font-mono">Tampered</span>
                     ) : isCleanTarget ? (
-                      <span className="text-[11px] text-neutral-500 font-mono">None (Clean Photo)</span>
+                      <span className="text-[11px] text-neutral-500 font-mono">None (Clean Baseline)</span>
                     ) : row.attack === 'screenshot_strip' ? (
                       <span className="text-[11px] text-neutral-500 font-mono">None (Stripped)</span>
                     ) : (

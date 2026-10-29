@@ -62,37 +62,37 @@ SAMPLE_METADATA = [
         "id": "campus_quad",
         "filename": "01_campus_quad.jpg",
         "title": "University Campus Quad",
-        "description": "Historic university library, autumn trees, and brick walking path in bright daylight."
+        "description": "University quad scene with brick pathways, trees, and collegiate architecture."
     },
     {
         "id": "portrait_student",
         "filename": "02_portrait_student.jpg",
         "title": "Student Portrait",
-        "description": "Natural daylight portrait of a college student holding a notebook on an outdoor terrace."
+        "description": "Student portrait scene on an outdoor terrace with study notebook."
     },
     {
         "id": "city_skyline",
         "filename": "03_city_skyline.jpg",
         "title": "Metropolitan City Skyline",
-        "description": "Vibrant city skyline with glass architecture and reflection over water."
+        "description": "City skyline scene with glass architecture and waterfront reflection."
     },
     {
         "id": "coffee_scene",
         "filename": "04_coffee_scene.jpg",
         "title": "Cafe Still Life",
-        "description": "Artisan coffee cup with latte art on a rustic wooden table with open journal."
+        "description": "Still life scene of coffee on a rustic wooden table with open journal."
     },
     {
         "id": "nature_lake",
         "filename": "05_nature_lake.jpg",
         "title": "Alpine Mountain Lake",
-        "description": "Turquoise glacial mountain lake surrounded by pine forests and snowy peaks."
+        "description": "Mountain lake scene surrounded by pine forests and snowy peaks."
     },
     {
         "id": "architecture_hall",
         "filename": "06_architecture_hall.jpg",
         "title": "Campus Architecture",
-        "description": "Architectural study of brick tower facades and arched windows."
+        "description": "Architectural study scene of campus brick tower facades and arched windows."
     }
 ]
 

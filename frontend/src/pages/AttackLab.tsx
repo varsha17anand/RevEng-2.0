@@ -139,14 +139,14 @@ export const AttackLab: React.FC = () => {
                       : 'text-neutral-400 hover:text-neutral-200'
                   }`}
                 >
-                  Clean Photo
+                  Clean Baseline
                 </button>
               </div>
             </div>
             <p className="text-xs text-neutral-400 mt-0.5">
               {targetType === 'watermarked'
                 ? 'Pre-watermarked with DCT tile engine (tests attack survival vs Instagram metadata).'
-                : 'Raw unwatermarked photograph (proves zero false positive detections).'}
+                : 'Clean unwatermarked baseline image (evaluates false positive resistance).'}
             </p>
           </div>
         </div>
