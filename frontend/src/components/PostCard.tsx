@@ -246,21 +246,42 @@ export const PostCard: React.FC<PostCardProps> = ({
             </div>
 
             <p className="text-xs text-neutral-300 leading-relaxed mb-3">
-              Meta labels content as AI info when creators or tools disclose it or when Meta detects standard industry indicators (such as C2PA manifests or IPTC XMP metadata).
+              For images from other companies' AI tools, Instagram's 'AI info' label depends on C2PA/IPTC
+              metadata — this is the pipeline we rebuilt. Meta also adds invisible watermarks to its own
+              Meta AI images, and users can self-disclose AI content.
             </p>
+            <p className="text-[11px] text-neutral-400 leading-relaxed mb-3">
+              Detection runs on the original upload, before any platform resizing.
+            </p>
+
+            {/* Why this label? section */}
+            <div className="p-3 rounded-xl bg-neutral-950/90 border border-purple-900/40 text-xs mb-3 space-y-1">
+              <div className="text-[10px] font-semibold text-purple-300 uppercase tracking-wider">
+                Why this label?
+              </div>
+              <p className="text-neutral-200 font-medium">
+                {analysis?.detection_signal?.signal === 'c2pa'
+                  ? 'Found C2PA manifest → AI info'
+                  : analysis?.detection_signal?.signal === 'iptc'
+                  ? `Found IPTC DigitalSourceType (${analysis.detection_signal.iptc_source_type || 'AI'}) → AI info`
+                  : 'No C2PA/IPTC AI metadata → no label'}
+              </p>
+            </div>
 
             <div className="p-3 rounded-xl bg-neutral-950/80 border border-neutral-800 text-[11px] space-y-1.5 text-neutral-400 mb-4">
               <div className="flex justify-between">
-                <span>Detection Method:</span>
-                <span className="text-neutral-200 font-semibold">Metadata Header Only</span>
+                <span>Detection Signal:</span>
+                <span className="text-neutral-200 font-semibold font-mono">
+                  {analysis?.detection_signal?.signal?.toUpperCase() || 'NONE'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Detection Scope:</span>
+                <span className="text-neutral-200 font-semibold">C2PA / IPTC Metadata</span>
               </div>
               <div className="flex justify-between">
                 <span>Vulnerability:</span>
                 <span className="text-rose-400 font-semibold">Easily stripped by screenshot</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Granularity:</span>
-                <span className="text-neutral-200 font-semibold">Binary (all-or-nothing)</span>
               </div>
             </div>
 

@@ -10,6 +10,12 @@ export interface SampleItem {
   description: string;
 }
 
+export interface DetectionSignal {
+  c2pa: boolean;
+  iptc_source_type: string | null;
+  signal: 'c2pa' | 'iptc' | 'none';
+}
+
 export interface AnalyzeResponse {
   mode: 'instagram' | 'truthlens';
   label: string;
@@ -23,6 +29,9 @@ export interface AnalyzeResponse {
   provenance_details: string;
   metadata_found: boolean;
   timings_ms: number;
+  detection_signal?: DetectionSignal;
+  signal?: 'c2pa' | 'iptc' | 'none';
+  iptc_source_type?: string | null;
 }
 
 export interface AttackResponse {

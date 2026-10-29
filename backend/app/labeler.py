@@ -19,8 +19,9 @@ from app.provenance import verify_manifest
 def instagram_mode_label(image_bytes: bytes) -> Dict[str, Any]:
     """Evaluate image using Meta/Instagram's closed-source AI info heuristic.
 
-    Instagram checks if IPTC DigitalSourceType is present in XMP or if raw C2PA/JUMBF
-    manifest boxes are in the file bytes. If metadata is stripped, no label is assigned.
+    Instagram checks if IPTC DigitalSourceType is present in XMP or if C2PA manifest
+    markers (JPEG APP11 JUMBF, PNG caBX, WebP C2PA) are in the file container.
+    If metadata is stripped, no label is assigned.
 
     Args:
         image_bytes: Raw image file bytes.
@@ -33,18 +34,35 @@ def instagram_mode_label(image_bytes: bytes) -> Dict[str, Any]:
 
     detected = (digital_source is not None) or has_c2pa
 
+    iptc_short = digital_source.split("/")[-1] if digital_source else None
+
+    if has_c2pa:
+        signal = "c2pa"
+    elif digital_source:
+        signal = "iptc"
+    else:
+        signal = "none"
+
     if detected:
         reason_parts = []
         if digital_source:
-            short_type = digital_source.split("/")[-1]
-            reason_parts.append(f"IPTC DigitalSourceType ({short_type})")
+            if iptc_short == "compositeWithTrainedAlgorithmicMedia":
+                reason_parts.append("IPTC DigitalSourceType (compositeWithTrainedAlgorithmicMedia - AI-edited)")
+            else:
+                reason_parts.append(f"IPTC DigitalSourceType ({iptc_short})")
         if has_c2pa:
-            reason_parts.append("C2PA / JUMBF manifest markers")
+            reason_parts.append("C2PA manifest container markers")
         reason = "Detected via " + " and ".join(reason_parts)
         label = "AI info"
     else:
         label = "No AI info"
         reason = "No C2PA manifest or IPTC DigitalSourceType found in file metadata"
+
+    detection_signal = {
+        "c2pa": bool(has_c2pa),
+        "iptc_source_type": iptc_short,
+        "signal": signal,
+    }
 
     return {
         "mode": "instagram",
@@ -53,7 +71,11 @@ def instagram_mode_label(image_bytes: bytes) -> Dict[str, Any]:
         "reason": reason,
         "metadata_found": detected,
         "digital_source_type": digital_source,
-        "has_c2pa": has_c2pa
+        "has_c2pa": has_c2pa,
+        "c2pa": bool(has_c2pa),
+        "iptc_source_type": iptc_short,
+        "signal": signal,
+        "detection_signal": detection_signal
     }
 
 

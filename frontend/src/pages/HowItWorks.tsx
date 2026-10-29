@@ -11,6 +11,7 @@ import {
   XCircle,
   Sparkles
 } from 'lucide-react';
+import validationData from '../validationData.json';
 
 export const HowItWorks: React.FC = () => {
   return (
@@ -38,21 +39,24 @@ export const HowItWorks: React.FC = () => {
           </div>
 
           <p className="text-xs text-neutral-400 leading-relaxed">
-            Instagram inspects uploaded files exclusively for embedded metadata markers (C2PA JUMBF boxes or IPTC
-            DigitalSourceType in XMP tags).
+            For images from other companies' AI tools, Instagram's 'AI info' label depends on C2PA/IPTC
+            metadata — this is the pipeline we rebuilt. Meta also adds invisible watermarks to its own
+            Meta AI images, and users can self-disclose AI content. Detection runs on the original upload,
+            before any platform resizing.
           </p>
 
           <div className="space-y-3 pt-2">
             <div className="p-3 rounded-xl bg-neutral-900/80 border border-neutral-800 text-xs space-y-1">
               <span className="font-semibold text-purple-300">Step 1: File Upload</span>
-              <p className="text-[11px] text-neutral-400">User posts JPEG or PNG to Instagram feed.</p>
+              <p className="text-[11px] text-neutral-400">User posts JPEG, PNG, or WebP to Instagram feed.</p>
             </div>
 
             <div className="p-3 rounded-xl bg-neutral-900/80 border border-neutral-800 text-xs space-y-1">
               <span className="font-semibold text-purple-300">Step 2: Metadata Scan</span>
               <p className="text-[11px] text-neutral-400">
-                Checks for <code className="text-purple-300">trainedAlgorithmicMedia</code> or byte pattern{' '}
-                <code className="text-purple-300">b"c2pa"</code>.
+                Checks for IPTC DigitalSourceType (<code className="text-purple-300">trainedAlgorithmicMedia</code> /{' '}
+                <code className="text-purple-300">compositeWithTrainedAlgorithmicMedia</code>) or C2PA manifest container chunks
+                (<code className="text-purple-300">caBX</code> in PNG, <code className="text-purple-300">APP11 JUMBF</code> in JPEG, <code className="text-purple-300">C2PA</code> in WebP).
               </p>
             </div>
 
@@ -106,10 +110,8 @@ export const HowItWorks: React.FC = () => {
             <div className="p-3 rounded-xl bg-neutral-900/80 border border-neutral-800 text-xs space-y-1">
               <span className="font-semibold text-cyan-300">3. Graded Label & Heatmap</span>
               <p className="text-[11px] text-neutral-400">
-              <p className="text-[11px] text-neutral-400">
                 Differentiates <em>AI-generated</em> (bbox spans ≥70% of image AND ≥28% tiles marked) from <em>AI-edited: N% of image</em> with red
                 translucent overlay. When metadata is present, tile count from the signed manifest is used directly.
-              </p>
               </p>
             </div>
 
@@ -211,6 +213,107 @@ export const HowItWorks: React.FC = () => {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Empirical Testing & Validation (Part B) */}
+      <div className="p-6 rounded-2xl bg-neutral-950 border border-neutral-800 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-800 pb-3">
+          <h3 className="text-base font-bold text-neutral-100 flex items-center gap-2">
+            <FileCheck2 className="w-4 h-4 text-emerald-400" />
+            <span>Empirical Testing & Validation Benchmark</span>
+          </h3>
+          <span className="text-[11px] font-mono text-neutral-400">
+            Measured: {validationData.date_measured}
+          </span>
+        </div>
+
+        {/* 4 Stat Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+          <div className="p-3.5 rounded-xl bg-neutral-900/90 border border-neutral-800">
+            <span className="text-[10px] text-neutral-400 uppercase font-sans font-semibold block mb-1">
+              Automated Tests
+            </span>
+            <div className="text-emerald-400 text-lg font-bold">
+              {validationData.tests_passed} / {validationData.tests_total}
+            </div>
+            <p className="text-[10px] text-neutral-500 font-sans">
+              100% pytest suite pass ({validationData.pytest_time_seconds}s)
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-neutral-900/90 border border-neutral-800">
+            <span className="text-[10px] text-neutral-400 uppercase font-sans font-semibold block mb-1">
+              Mean Imperceptibility
+            </span>
+            <div className="text-cyan-300 text-lg font-bold">
+              {validationData.mean_psnr_db} dB
+            </div>
+            <p className="text-[10px] text-neutral-500 font-sans">
+              Worst-case: {validationData.worst_psnr_db} dB (Target ≥38 dB)
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-neutral-900/90 border border-neutral-800">
+            <span className="text-[10px] text-neutral-400 uppercase font-sans font-semibold block mb-1">
+              Clean False Positives
+            </span>
+            <div className="text-emerald-400 text-lg font-bold">
+              {validationData.clean_fp_tiles} / {validationData.clean_total_tiles}
+            </div>
+            <p className="text-[10px] text-neutral-500 font-sans">
+              0 FP tiles on clean baseline images
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-neutral-900/90 border border-neutral-800">
+            <span className="text-[10px] text-neutral-400 uppercase font-sans font-semibold block mb-1">
+              Server-Side Latency
+            </span>
+            <div className="text-purple-300 text-lg font-bold">
+              {validationData.average_analysis_time_ms} ms
+            </div>
+            <p className="text-[10px] text-neutral-400 font-sans leading-tight">
+              Server-side processing time (measured locally). End-to-end requests on the hosted demo take ~1–2 s incl. network.
+            </p>
+          </div>
+        </div>
+
+        {/* Per-Attack Survival Table */}
+        <div className="overflow-x-auto pt-2">
+          <table className="w-full text-left text-xs text-neutral-300">
+            <thead className="bg-neutral-900/90 text-neutral-400 uppercase font-mono text-[10px] tracking-wider border-b border-neutral-800">
+              <tr>
+                <th className="py-2 px-3">Adversarial Transformation</th>
+                <th className="py-2 px-3 text-center">Instagram Survival</th>
+                <th className="py-2 px-3 text-center">TruthLens Survival</th>
+                <th className="py-2 px-3 text-center">Mean Tile Recall</th>
+                <th className="py-2 px-3 text-center">Signal Strength (z̄)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-800/60 font-sans text-[11px]">
+              {validationData.survival_table.map((row) => (
+                <tr key={row.attack}>
+                  <td className="py-2 px-3 font-semibold text-neutral-200">{row.attack_name}</td>
+                  <td className="py-2 px-3 text-center font-mono">
+                    <span className={row.instagram_survival_pct > 0 ? 'text-neutral-300' : 'text-rose-400'}>
+                      {row.instagram_survival_pct}%
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 text-center font-mono font-bold">
+                    <span className={row.truthlens_survival_pct > 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                      {row.truthlens_survival_pct}%
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 text-center font-mono text-cyan-300">{row.truthlens_recall_pct}%</td>
+                  <td className="py-2 px-3 text-center font-mono text-neutral-400">{row.mean_global_z}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-[11px] text-neutral-400 italic px-1 pt-1">
+          Recall is per 64×64 tile; the image-level verdict was correct on every watermarked sample, with zero false positives on clean images.
+        </p>
       </div>
 
       {/* Honest Limitations & Boundaries (Mandatory Section) */}

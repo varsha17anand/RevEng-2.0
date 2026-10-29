@@ -18,6 +18,73 @@ IPTC_COMPOSITE_ALGORITHMIC = "http://cv.iptc.org/newscodes/digitalsourcetype/com
 # Standard C2PA / JUMBF magic byte sequences
 C2PA_BOX = b"c2pa"
 JUMB_BOX = b"jumb"
+PNG_CABX = b"caBX"
+WEBP_C2PA = b"C2PA"
+
+
+def _has_jpeg_c2pa(image_bytes: bytes) -> bool:
+    """Scan JPEG marker segments for APP11 (0xFFEB) carrying a JUMBF box labelled 'c2pa'."""
+    if len(image_bytes) < 4 or image_bytes[:2] != b"\xff\xd8":
+        return False
+    offset = 2
+    n = len(image_bytes)
+    while offset < n - 1:
+        if image_bytes[offset] != 0xFF:
+            offset += 1
+            continue
+        marker = image_bytes[offset + 1]
+        if marker == 0xFF:
+            offset += 1
+            continue
+        if marker in (0xD8, 0xD9, 0x01) or (0xD0 <= marker <= 0xD7):
+            offset += 2
+            continue
+        if marker == 0xDA:  # SOS: Start of Scan (entropy coded scan follows)
+            break
+        if offset + 4 > n:
+            break
+        seg_len = int.from_bytes(image_bytes[offset + 2:offset + 4], "big")
+        if seg_len < 2:
+            break
+        seg_data = image_bytes[offset + 4:offset + 2 + seg_len]
+        if marker == 0xEB:  # APP11
+            # Check for JUMBF box carrying/labelled "c2pa"
+            if (b"jumb" in seg_data and b"c2pa" in seg_data) or b"c2pa" in seg_data:
+                return True
+        offset += 2 + seg_len
+    return False
+
+
+def _has_png_c2pa(image_bytes: bytes) -> bool:
+    """Scan PNG chunks for real C2PA 'caBX' chunk type."""
+    if len(image_bytes) < 8 or image_bytes[:8] != b"\x89PNG\r\n\x1a\n":
+        return False
+    offset = 8
+    n = len(image_bytes)
+    while offset + 8 <= n:
+        chunk_len = int.from_bytes(image_bytes[offset:offset + 4], "big")
+        chunk_type = image_bytes[offset + 4:offset + 8]
+        if chunk_type == PNG_CABX:
+            return True
+        offset += 8 + chunk_len + 4
+    return False
+
+
+def _has_webp_c2pa(image_bytes: bytes) -> bool:
+    """Scan WebP RIFF stream for 'C2PA' chunk."""
+    if len(image_bytes) < 12:
+        return False
+    if image_bytes[:4] != b"RIFF" or image_bytes[8:12] != b"WEBP":
+        return False
+    offset = 12
+    n = len(image_bytes)
+    while offset + 8 <= n:
+        fourcc = image_bytes[offset:offset + 4]
+        chunk_size = int.from_bytes(image_bytes[offset + 4:offset + 8], "little")
+        if fourcc == WEBP_C2PA:
+            return True
+        offset += 8 + chunk_size + (chunk_size % 2)
+    return False
 
 
 def create_xmp_packet(digital_source_type: str, provenance_payload: Optional[str] = None) -> bytes:
@@ -75,8 +142,6 @@ def embed_metadata(
         info.add_text("Iptc4xmpExt:DigitalSourceType", digital_source_type)
         if provenance_json_str:
             info.add_text("TruthLens:Provenance", provenance_json_str)
-        # Also embed c2pa marker in text to simulate C2PA tool presence
-        info.add_text("c2pa_manifest", "present")
         image.save(buf, format="PNG", pnginfo=info)
     else:
         # Save as JPEG with APP1 XMP marker
@@ -97,31 +162,54 @@ def read_digital_source_type(image_bytes: bytes) -> Optional[str]:
     Returns:
         Optional[str]: Found DigitalSourceType URI or None.
     """
-    # Check for direct IPTC strings in bytes (robust across PNG, JPEG, WEBP)
-    if IPTC_TRAINED_ALGORITHMIC.encode("utf-8") in image_bytes:
-        return IPTC_TRAINED_ALGORITHMIC
+    if not image_bytes:
+        return None
+
+    # Check composite first because trainedAlgorithmicMedia is a substring of compositeWithTrainedAlgorithmicMedia
     if IPTC_COMPOSITE_ALGORITHMIC.encode("utf-8") in image_bytes:
         return IPTC_COMPOSITE_ALGORITHMIC
-
-    # Check for keywords or namespaces
-    if b"trainedAlgorithmicMedia" in image_bytes:
+    if IPTC_TRAINED_ALGORITHMIC.encode("utf-8") in image_bytes:
         return IPTC_TRAINED_ALGORITHMIC
+
+    # Check for keywords or namespaces (composite first)
     if b"compositeWithTrainedAlgorithmicMedia" in image_bytes:
         return IPTC_COMPOSITE_ALGORITHMIC
+    if b"trainedAlgorithmicMedia" in image_bytes:
+        return IPTC_TRAINED_ALGORITHMIC
 
     return None
 
 
 def has_c2pa_markers(image_bytes: bytes) -> bool:
-    """Check if byte stream contains C2PA or JUMBF manifest markers.
+    """Check if byte stream contains C2PA or JUMBF manifest markers in container structures.
+
+    Detects:
+    - JPEG: APP11 segments (0xFFEB) carrying JUMBF boxes labelled 'c2pa'
+    - PNG: 'caBX' chunk
+    - WebP: 'C2PA' chunk
 
     Args:
         image_bytes: Raw image file bytes.
 
     Returns:
-        bool: True if C2PA or JUMBF signature is present.
+        bool: True if C2PA signature is present in the container structure.
     """
-    return C2PA_BOX in image_bytes or JUMB_BOX in image_bytes
+    if not image_bytes or len(image_bytes) < 8:
+        return False
+
+    # Check JPEG
+    if image_bytes[:2] == b"\xff\xd8":
+        return _has_jpeg_c2pa(image_bytes)
+
+    # Check PNG
+    if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
+        return _has_png_c2pa(image_bytes)
+
+    # Check WebP
+    if image_bytes[:4] == b"RIFF" and len(image_bytes) >= 12 and image_bytes[8:12] == b"WEBP":
+        return _has_webp_c2pa(image_bytes)
+
+    return False
 
 
 def extract_provenance_raw(image_bytes: bytes) -> Optional[str]:

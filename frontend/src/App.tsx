@@ -89,10 +89,15 @@ export function App() {
 
       {/* Footer */}
       <footer className="border-t border-neutral-900 bg-neutral-950 py-6 text-center text-xs text-neutral-500">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>TruthLens Prototype • Reverse-Engineered AI-Info Detection</p>
-          <p className="font-mono text-[11px] text-neutral-400">
-            Empirical Benchmark: Mean PSNR 41.7 dB • 0/384 False Positive Tiles (Clean) • Watermark Survives Metadata Stripping
+        <div className="max-w-6xl mx-auto px-4 flex flex-col items-center justify-between gap-3 text-center sm:text-left">
+          <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-2">
+            <p className="font-semibold text-neutral-300">TruthLens Prototype • Reverse-Engineered AI-Info Detection</p>
+            <p className="font-mono text-[11px] text-neutral-400">
+              Mean PSNR 41.7 dB • 0 False Positive Tiles • DCT Watermark Survives Metadata Stripping
+            </p>
+          </div>
+          <p className="text-[11px] text-neutral-400 max-w-4xl leading-relaxed text-center">
+            For images from other companies' AI tools, Instagram's 'AI info' label depends on C2PA/IPTC metadata — this is the pipeline we rebuilt. Meta also adds invisible watermarks to its own Meta AI images, and users can self-disclose AI content. Detection runs on the original upload, before any platform resizing.
           </p>
         </div>
       </footer>

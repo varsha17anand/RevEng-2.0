@@ -29,10 +29,16 @@ export const LabelBadge: React.FC<LabelBadgeProps> = ({
   if (mode === 'instagram') {
     if (!hasAiLabel) {
       return (
-        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-900/80 border border-neutral-700/60 text-neutral-400 text-xs font-medium backdrop-blur-md">
+        <button
+          type="button"
+          onClick={onClickDetails}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700/60 text-neutral-400 hover:text-neutral-200 text-xs font-medium backdrop-blur-md transition-colors cursor-pointer"
+          title="Click to view Instagram label explanation"
+        >
           <span className="w-1.5 h-1.5 rounded-full bg-neutral-500"></span>
           <span>No AI info detected</span>
-        </div>
+          <Info className="w-3.5 h-3.5 text-neutral-500 hover:text-neutral-300 ml-0.5" />
+        </button>
       );
     }
 

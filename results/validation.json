@@ -1,0 +1,135 @@
+{
+  "date_measured": "2026-10-29 18:55:41 UTC",
+  "tests_passed": 35,
+  "tests_total": 35,
+  "pytest_time_seconds": 4.63,
+  "mean_psnr_db": 41.71,
+  "worst_psnr_db": 40.7,
+  "clean_fp_tiles": 0,
+  "clean_total_tiles": 384,
+  "clean_false_positive_tiles": 0,
+  "clean_attack_fp_tiles": 1,
+  "clean_test_invocations": 60,
+  "average_analysis_time_ms": 60.73,
+  "latency_note": "Server-side processing time (measured locally). End-to-end requests on the hosted demo take ~1\u20132 s incl. network.",
+  "psnr_samples": [
+    {
+      "id": "campus_quad",
+      "filename": "01_campus_quad.jpg",
+      "title": "University Campus Quad",
+      "psnr_db": 40.7
+    },
+    {
+      "id": "portrait_student",
+      "filename": "02_portrait_student.jpg",
+      "title": "Student Portrait",
+      "psnr_db": 42.33
+    },
+    {
+      "id": "city_skyline",
+      "filename": "03_city_skyline.jpg",
+      "title": "Metropolitan City Skyline",
+      "psnr_db": 41.46
+    },
+    {
+      "id": "coffee_scene",
+      "filename": "04_coffee_scene.jpg",
+      "title": "Cafe Still Life",
+      "psnr_db": 43.11
+    },
+    {
+      "id": "nature_lake",
+      "filename": "05_nature_lake.jpg",
+      "title": "Alpine Mountain Lake",
+      "psnr_db": 41.49
+    },
+    {
+      "id": "architecture_hall",
+      "filename": "06_architecture_hall.jpg",
+      "title": "Campus Architecture",
+      "psnr_db": 41.17
+    }
+  ],
+  "survival_table": [
+    {
+      "attack": "none",
+      "attack_name": "Baseline (No Attack)",
+      "instagram_survival_pct": 100.0,
+      "truthlens_survival_pct": 100.0,
+      "truthlens_recall_pct": 46.4,
+      "mean_global_z": 8.2
+    },
+    {
+      "attack": "screenshot_strip",
+      "attack_name": "Screenshot / Metadata Strip",
+      "instagram_survival_pct": 0.0,
+      "truthlens_survival_pct": 100.0,
+      "truthlens_recall_pct": 46.4,
+      "mean_global_z": 8.2
+    },
+    {
+      "attack": "jpeg_q90",
+      "attack_name": "JPEG Quality 90",
+      "instagram_survival_pct": 100.0,
+      "truthlens_survival_pct": 100.0,
+      "truthlens_recall_pct": 46.4,
+      "mean_global_z": 8.05
+    },
+    {
+      "attack": "jpeg_q75",
+      "attack_name": "JPEG Quality 75",
+      "instagram_survival_pct": 100.0,
+      "truthlens_survival_pct": 100.0,
+      "truthlens_recall_pct": 43.2,
+      "mean_global_z": 6.37
+    },
+    {
+      "attack": "jpeg_q50",
+      "attack_name": "JPEG Quality 50 (Aggressive)",
+      "instagram_survival_pct": 100.0,
+      "truthlens_survival_pct": 100.0,
+      "truthlens_recall_pct": 29.9,
+      "mean_global_z": 4.71
+    },
+    {
+      "attack": "crop_10_odd",
+      "attack_name": "Crop 10% (Odd Pixel Offset)",
+      "instagram_survival_pct": 100.0,
+      "truthlens_survival_pct": 100.0,
+      "truthlens_recall_pct": 47.3,
+      "mean_global_z": 8.34
+    },
+    {
+      "attack": "crop_jpeg_q75",
+      "attack_name": "Crop 10% + JPEG q75",
+      "instagram_survival_pct": 100.0,
+      "truthlens_survival_pct": 100.0,
+      "truthlens_recall_pct": 38.8,
+      "mean_global_z": 6.75
+    },
+    {
+      "attack": "brightness_plus_10",
+      "attack_name": "Brightness +10%",
+      "instagram_survival_pct": 100.0,
+      "truthlens_survival_pct": 100.0,
+      "truthlens_recall_pct": 43.2,
+      "mean_global_z": 8.19
+    },
+    {
+      "attack": "resize_0_9x",
+      "attack_name": "Resize Down 0.9x",
+      "instagram_survival_pct": 100.0,
+      "truthlens_survival_pct": 0.0,
+      "truthlens_recall_pct": 0.0,
+      "mean_global_z": 2.02
+    },
+    {
+      "attack": "resize_1_5x",
+      "attack_name": "Resize Up 1.5x",
+      "instagram_survival_pct": 100.0,
+      "truthlens_survival_pct": 16.7,
+      "truthlens_recall_pct": 0.1,
+      "mean_global_z": 2.76
+    }
+  ]
+}

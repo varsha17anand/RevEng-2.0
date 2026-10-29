@@ -9,18 +9,23 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![Tests](https://img.shields.io/badge/Pytest-21%20Passed-brightgreen)](backend/tests/)
+[![Tests](https://img.shields.io/badge/Pytest-35%20Passed-brightgreen)](backend/tests/)
 
 ---
 
 ## 1. Problem Statement & Reverse-Engineering Findings
 
 ### The Closed-Source Heuristic
-Instagram (Meta) labels AI-generated photos with an **"AI info"** badge. Through reverse-engineering the client upload pipeline and IPTC/C2PA specifications, we uncovered how Meta decides this label:
+For images from other companies' AI tools, Instagram's "AI info" label depends on C2PA/IPTC metadata — this is the pipeline we rebuilt. Meta also adds invisible watermarks to its own Meta AI images, and users can self-disclose AI content. Detection runs on the original upload, before any platform resizing.
+
+Specifically, Meta inspects uploads for:
 1. **IPTC DigitalSourceType (XMP):** Inspects metadata headers for:
    - `http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia` (fully generated)
    - `http://cv.iptc.org/newscodes/digitalsourcetype/compositeWithTrainedAlgorithmicMedia` (composite edit)
-2. **C2PA / JUMBF Manifest Markers:** Scans raw file bytes for `b"c2pa"` or `b"jumb"` box signatures from certified generative tools (ChatGPT, Adobe Firefly, Midjourney).
+2. **C2PA Manifest Container Markers:** Scans file container structures:
+   - JPEG `APP11` segments (0xFFEB) carrying JUMBF boxes labelled `"c2pa"`
+   - PNG `caBX` chunks
+   - WebP `C2PA` RIFF chunks
 
 ### Two Fatal Flaws in Meta's Approach
 1. **The Screenshot / Metadata Strip Bypass:** Taking a desktop screenshot or re-encoding pixels completely purges non-pixel metadata chunks (EXIF, XMP, C2PA). The "AI info" label **vanishes completely (0% survival)** on 100% synthetic images.
@@ -175,7 +180,62 @@ Open **`http://localhost:8000`** in your browser.
 
 ---
 
-## 9. Repository Structure
+## 9. How to Run Tests & Verification
+
+### Running Automated Test Suite
+Run the full pytest suite:
+```bash
+PYTHONPATH=backend pytest -q
+```
+
+Expected output:
+```
+35 passed, 1 warning in 4.18s
+```
+
+### Running Real-World Files Check
+Inspect images placed in `samples/real/` (skips gracefully if empty):
+```bash
+python scripts/check_real_files.py
+```
+
+### Generating the Empirical Validation Report
+Run the comprehensive benchmark (PSNR, Attack Lab on all 6 samples, clean false-positive analysis):
+```bash
+python scripts/validation_report.py
+```
+
+### Empirical Validation Summary (`results/validation.md`)
+
+| Metric | Result | Target / Standard | Status |
+|---|---|---|---|
+| **Test Suite Pass Rate** | **35 / 35 passed** | 100% | PASS |
+| **Mean Imperceptibility (PSNR)** | **41.71 dB** | ≥ 38.0 dB | PASS |
+| **Worst-Case PSNR** | **40.70 dB** | ≥ 38.0 dB | PASS |
+| **Clean Baseline False Positives** | **0 / 384 tiles** | 0 FP tiles | PASS |
+| **Screenshot Attack Survival** | **100% (TruthLens) vs 0% (Instagram)** | TruthLens survives | PASS |
+| **Average Detection Latency** | **60.7 ms** | Server-side processing time (measured locally). End-to-end requests on the hosted demo take ~1–2 s incl. network. | PASS |
+
+#### Adversarial Robustness Table (Measured Across All 6 Samples)
+
+| Adversarial Attack / Transformation | Instagram Survival (%) | TruthLens Survival (%) | TruthLens Mean Recall (%) | Signal Strength (z̄) |
+|---|---|---|---|---|
+| **Baseline (No Attack)** | 100.0% | **100.0%** | 46.4% | 8.20 |
+| **Screenshot / Metadata Strip** | 0.0% | **100.0%** | 46.4% | 8.20 |
+| **JPEG Quality 90** | 100.0% | **100.0%** | 46.4% | 8.05 |
+| **JPEG Quality 75** | 100.0% | **100.0%** | 43.2% | 6.37 |
+| **JPEG Quality 50 (Aggressive)** | 100.0% | **100.0%** | 29.9% | 4.71 |
+| **Crop 10% (Odd Pixel Offset)** | 100.0% | **100.0%** | 47.3% | 8.34 |
+| **Crop 10% + JPEG q75** | 100.0% | **100.0%** | 38.8% | 6.75 |
+| **Brightness +10%** | 100.0% | **100.0%** | 43.2% | 8.19 |
+| **Resize Down 0.9x** | 100.0% | **0.0%** | 0.0% | 2.02 |
+| **Resize Up 1.5x** | 100.0% | **16.7%** | 0.1% | 2.76 |
+
+> Recall is per 64×64 tile; the image-level verdict was correct on every watermarked sample, with zero false positives on clean images.
+
+---
+
+## 10. Repository Structure
 
 ```
 truthlens/

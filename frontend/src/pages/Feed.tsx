@@ -153,7 +153,7 @@ export const Feed: React.FC<FeedProps> = ({ initialBlob }) => {
           Social Feed Inspection
         </h1>
         <p className="text-neutral-400 text-sm max-w-xl">
-          Toggle between <strong className="text-purple-300">Instagram Mode</strong> (metadata only) and{' '}
+          Toggle between <strong className="text-purple-300">Instagram Mode</strong> (C2PA/IPTC metadata) and{' '}
           <strong className="text-cyan-300">TruthLens Mode</strong> (DCT pixel watermark + Ed25519 provenance).
           Click <em>Attack: Screenshot</em> to test metadata vulnerability in real-time.
         </p>
@@ -290,7 +290,10 @@ export const Feed: React.FC<FeedProps> = ({ initialBlob }) => {
             <div className="space-y-2.5 text-xs text-neutral-400 leading-relaxed">
               <div className="p-3 rounded-xl bg-purple-950/20 border border-purple-900/40">
                 <strong className="text-purple-300 block mb-0.5">1. In Instagram Mode:</strong>
-                Instagram checks only XMP metadata. Clicking <em>Attack: Screenshot</em> strips all metadata, and the label vanishes immediately.
+                For images from other companies' AI tools, Instagram's 'AI info' label depends on C2PA/IPTC
+                metadata — this is the pipeline we rebuilt. Meta also adds invisible watermarks to its own
+                Meta AI images, and users can self-disclose AI content. Detection runs on the original upload,
+                before any platform resizing. Clicking <em>Attack: Screenshot</em> strips all metadata, and the label vanishes immediately.
               </div>
 
               <div className="p-3 rounded-xl bg-cyan-950/20 border border-cyan-900/40">

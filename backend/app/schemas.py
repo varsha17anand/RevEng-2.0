@@ -20,6 +20,12 @@ class AnalyzeResponse(BaseModel):
     provenance_details: str = Field("", description="Human-readable provenance info")
     metadata_found: bool = Field(False, description="Whether C2PA or IPTC metadata was present")
     timings_ms: float = Field(..., description="Server processing time in milliseconds")
+    detection_signal: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Signal breakdown: {'c2pa': bool, 'iptc_source_type': str|null, 'signal': 'c2pa'|'iptc'|'none'}"
+    )
+    signal: Optional[str] = Field(None, description="Signal type: 'c2pa', 'iptc', or 'none'")
+    iptc_source_type: Optional[str] = Field(None, description="IPTC DigitalSourceType value if found")
 
 
 class AttackLabRow(BaseModel):

@@ -28,6 +28,7 @@ from app.watermark import (
     TILE_SIZE
 )
 from app.labeler import instagram_mode_label, truthlens_label
+from app.metadata import read_digital_source_type, has_c2pa_markers
 from app.attacks import ATTACK_REGISTRY, apply_attack
 from app.ai_edit import generate_ai_image, edit_ai_region, VALID_EDIT_STYLES, square_crop_or_pad
 from app.schemas import (
@@ -200,6 +201,11 @@ def analyze_image(
     if mode_lower == "instagram":
         res = instagram_mode_label(content)
         t1 = time.time()
+        sig = res.get("detection_signal") or {
+            "c2pa": bool(res.get("c2pa", False)),
+            "iptc_source_type": res.get("iptc_source_type"),
+            "signal": res.get("signal", "none")
+        }
         return AnalyzeResponse(
             mode="instagram",
             label=res["label"],
@@ -212,7 +218,10 @@ def analyze_image(
             provenance="none",
             provenance_details="Instagram evaluates only C2PA/IPTC metadata; pixel watermark is ignored.",
             metadata_found=res["metadata_found"],
-            timings_ms=round((t1 - t0) * 1000, 2)
+            timings_ms=round((t1 - t0) * 1000, 2),
+            detection_signal=sig,
+            signal=sig["signal"],
+            iptc_source_type=sig["iptc_source_type"]
         )
     else:
         # TruthLens mode
@@ -225,6 +234,16 @@ def analyze_image(
         if res["tiles_marked"] > 0 and z_matrix.size > 0:
             overlay = generate_heatmap_overlay(img.size, z_matrix, offset=offset)
             heatmap_url = image_to_base64_data_url(overlay, format="PNG")
+
+        digital_source = read_digital_source_type(content)
+        has_c2pa = has_c2pa_markers(content)
+        iptc_short = digital_source.split("/")[-1] if digital_source else None
+        sig_name = "c2pa" if has_c2pa else ("iptc" if digital_source else "none")
+        tl_sig = {
+            "c2pa": bool(has_c2pa),
+            "iptc_source_type": iptc_short,
+            "signal": sig_name,
+        }
 
         t1 = time.time()
         return AnalyzeResponse(
@@ -239,7 +258,10 @@ def analyze_image(
             provenance=res["provenance_status"],
             provenance_details=res["provenance_details"],
             metadata_found=res["metadata_present"],
-            timings_ms=round((t1 - t0) * 1000, 2)
+            timings_ms=round((t1 - t0) * 1000, 2),
+            detection_signal=tl_sig,
+            signal=tl_sig["signal"],
+            iptc_source_type=tl_sig["iptc_source_type"]
         )
 
 
