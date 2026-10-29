@@ -6,3 +6,10 @@ services:
     plan: free
     region: oregon
     healthCheckPath: /api/health
+    envVars:
+      # 32-byte Ed25519 private key as hex. Generate with:
+      #   python -c "import secrets; print(secrets.token_bytes(32).hex())"
+      # Set this in Render Dashboard → Environment → Add Secret File / Env Var.
+      # Without it the server falls back to a deterministic demo key (dev only).
+      - key: TRUTHLENS_SIGNING_KEY
+        sync: false   # marks it as a secret — Render will not auto-fill it
