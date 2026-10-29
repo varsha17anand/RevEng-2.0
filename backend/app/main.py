@@ -275,19 +275,24 @@ async def run_attack_lab(
     for att_key in ATTACK_REGISTRY.keys():
         att_img, att_bytes = apply_attack(att_key, img, content)
 
-        # Instagram analysis
+        # Instagram analysis (evaluates file metadata)
         ig_res = instagram_mode_label(att_bytes)
 
         # TruthLens analysis
         tl_res = truthlens_label(att_img, att_bytes, sync_crop=True)
+
+        # In the Attack Lab, evaluate the survival of the pixel DCT watermark itself
+        # so that defeated attacks (e.g. continuous resizing) show DEFEATED / No watermark.
+        watermark_survived = tl_res["tiles_marked"] > 0
+        tl_display_label = tl_res["label"] if watermark_survived else "No watermark"
 
         rows.append(AttackLabRow(
             attack=att_key,
             attack_name=attack_labels.get(att_key, att_key),
             instagram_label=ig_res["label"],
             instagram_detected=ig_res["has_ai_label"],
-            truthlens_label=tl_res["label"],
-            truthlens_detected=tl_res["has_ai_label"],
+            truthlens_label=tl_display_label,
+            truthlens_detected=watermark_survived,
             fraction_marked=tl_res["fraction_marked"],
             tiles_marked=tl_res["tiles_marked"],
             total_tiles=tl_res["total_tiles"],

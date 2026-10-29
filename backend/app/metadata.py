@@ -49,7 +49,8 @@ def embed_metadata(
     image: Image.Image,
     digital_source_type: str,
     provenance_json_str: Optional[str] = None,
-    output_format: str = "PNG"
+    output_format: str = "PNG",
+    quality: int = 95
 ) -> bytes:
     """Embed IPTC XMP and provenance metadata into image bytes.
 
@@ -58,6 +59,7 @@ def embed_metadata(
         digital_source_type: IPTC DigitalSourceType URI.
         provenance_json_str: Optional signed provenance JSON string.
         output_format: "PNG" or "JPEG".
+        quality: JPEG compression quality (1-100, default 95).
 
     Returns:
         bytes: Encoded image bytes containing XMP metadata.
@@ -81,7 +83,7 @@ def embed_metadata(
         # JPEG APP1 XMP header: b"http://ns.adobe.com/xap/1.0/\x00"
         xmp_header = b"http://ns.adobe.com/xap/1.0/\x00"
         app1_data = xmp_header + xmp_bytes
-        image.save(buf, format="JPEG", quality=95, exif=app1_data)
+        image.save(buf, format="JPEG", quality=quality, exif=app1_data)
 
     return buf.getvalue()
 
